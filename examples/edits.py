@@ -1,7 +1,7 @@
 import asyncio
 
-import nextcord
-from nextcord.ext import commands
+import nexon
+from nexon.ext import commands
 
 
 class Bot(commands.Bot):
@@ -13,7 +13,7 @@ class Bot(commands.Bot):
         await before.channel.send(msg)
 
 
-intents = nextcord.Intents.default()
+intents = nexon.Intents.default()
 intents.message_content = True
 bot = Bot(command_prefix="$", intents=intents)
 

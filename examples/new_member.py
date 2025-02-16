@@ -1,6 +1,6 @@
 # This example requires the 'members' privileged intent
-import nextcord
-from nextcord.ext import commands
+import nexon
+from nexon.ext import commands
 
 
 class Bot(commands.Bot):
@@ -14,7 +14,7 @@ class Bot(commands.Bot):
             await guild.system_channel.send(to_send)
 
 
-intents = nextcord.Intents.default()
+intents = nexon.Intents.default()
 intents.members = True
 intents.message_content = True
 

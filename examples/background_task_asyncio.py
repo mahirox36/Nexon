@@ -1,6 +1,6 @@
 import asyncio
 
-from nextcord.ext import commands
+from nexon.ext import commands
 
 
 class Bot(commands.Bot):

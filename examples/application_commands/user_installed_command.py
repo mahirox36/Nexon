@@ -1,5 +1,5 @@
-from nextcord import IntegrationType, Interaction, InteractionContextType
-from nextcord.ext import commands
+from nexon import IntegrationType, Interaction, InteractionContextType
+from nexon.ext import commands
 
 bot = commands.Bot()
 
@@ -25,7 +25,7 @@ async def example_slash_command(interaction: Interaction):
     elif interaction.context == InteractionContextType.private_channel:
         place = "within a Group DM or DM other than the app's bot user"
     else:
-        place = "somewhere nextcord doesn't support yet"
+        place = "somewhere nexon doesn't support yet"
 
     await interaction.response.send_message(f"This command was run {place}.")
 

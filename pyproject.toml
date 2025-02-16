@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "nextcord"
+name = "nexon"
 # Placeholder, modified by dynamic-versioning.
 version = "0.0.0"
-homepage = "https://github.com/nextcord/nextcord"
+homepage = "https://github.com/mahirox36/nexon"
 documentation = "https://docs.nextcord.dev/"
-description = "A Python wrapper for the Discord API forked from discord.py"
-authors = ["Nextcord Developers <code@nextcord.dev>"]
+description = "A Python wrapper for the Discord API forked from nextcord with additional stuff"
+authors = ["MahiroX36", "Nextcord Developers <code@nextcord.dev>"]
 license = "MIT"
 readme = "README.rst"
 classifiers = [
@@ -22,15 +22,15 @@ classifiers = [
     "Typing :: Typed",
 ] # License and Version are added automatically by Poetry
 packages = [
-    { include = "nextcord" },
-    { include = "nextcord/types" },
-    { include = "nextcord/ui" },
-    { include = "nextcord/ui/select" },
-    { include = "nextcord/webhook" },
-    { include = "nextcord/ext/application_checks" },
-    { include = "nextcord/ext/commands" },
-    { include = "nextcord/ext/slash_utils" },
-    { include = "nextcord/ext/tasks" },
+    { include = "nexon" },
+    { include = "nexon/types" },
+    { include = "nexon/ui" },
+    { include = "nexon/ui/select" },
+    { include = "nexon/webhook" },
+    { include = "nexon/ext/application_checks" },
+    { include = "nexon/ext/commands" },
+    { include = "nexon/ext/slash_utils" },
+    { include = "nexon/ext/tasks" },
 ]
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -68,7 +68,7 @@ sphinxcontrib-websupport = "^1.2.4"
 
 [tool.poetry.urls]
 "Documentation" = "https://docs.nextcord.dev/"
-"Issue tracker" = "https://github.com/nextcord/nextcord/issues"
+"Issue tracker" = "https://github.com/nexon/nexon/issues"
 
 [tool.poetry.extras]
 voice = ["PyNaCl"]
@@ -115,12 +115,12 @@ target-version = ["py312", "py313"]
 
 [tool.taskipy.tasks]
 black = { cmd = "task lint black", help = "Run black" }
-docs = { cmd = "cd docs && sphinx-autobuild . _build/html --ignore _build --watch ../nextcord --port 8069", help = "Build the documentation on an autoreloading server." }
+docs = { cmd = "cd docs && sphinx-autobuild . _build/html --ignore _build --watch ../nexon --port 8069", help = "Build the documentation on an autoreloading server." }
 isort = { cmd = "task lint isort", help = "Run isort" }
 lint = { cmd = "pre-commit run --all-files", help = "Check all files for linting errors" }
 precommit = { cmd = "pre-commit install --install-hooks", help = "Install the precommit hook" }
 pyright = { cmd = "dotenv -f task.env run -- python -m pyright", help = "Run pyright" }
-slotscheck = { cmd = "python -m slotscheck --verbose -m nextcord", help = "Run slotscheck" }
+slotscheck = { cmd = "python -m slotscheck --verbose -m nexon", help = "Run slotscheck" }
 autotyping = { cmd = "task lint autotyping", help = "Refactor code to add automatic type annotations" }
 
 
@@ -130,14 +130,14 @@ require-superclass = true
 require-subclass = false
 exclude-modules = '''
 (
-    ^nextcord\.types\.
+    ^nexon\.types\.
 )
 '''
 
 
 [tool.pyright]
 typeCheckingMode = "basic"
-include = ["nextcord", "docs", "*.py"]
+include = ["nexon", "docs", "*.py"]
 ignore = ["examples"]
 pythonVersion = "3.12"
 

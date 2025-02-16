@@ -1,4 +1,4 @@
-.. image:: https://raw.githubusercontent.com/nextcord/nextcord/master/assets/repo-banner.svg
+.. image:: https://raw.githubusercontent.com/mahirox36/nexon/master/assets/repo-banner.svg
    :alt: Nextcord
 
 .. image:: https://img.shields.io/discord/881118111967883295?color=blue&label=discord
@@ -17,7 +17,7 @@
    :target: https://docs.nextcord.dev/
    :alt: Nextcord documentation
 
-Nextcord
+Nexon
 --------
 
 A modern, easy-to-use, feature-rich, and async-ready API wrapper for Discord written in Python.
@@ -70,7 +70,7 @@ To install the development version, do the following:
 
 .. code:: sh
 
-    $ git clone https://github.com/nextcord/nextcord/
+    $ git clone https://github.com/mahirox36/nexon/
     $ cd nextcord
     $ python3 -m pip install -U .[voice]
 
@@ -105,9 +105,9 @@ Quick Example
 
     bot.run("token")
 
-You can find more examples in the `examples directory <https://github.com/nextcord/nextcord/blob/master/examples/>`_.
+You can find more examples in the `examples directory <https://github.com/mahirox36/nexon/blob/master/examples/>`_.
 
-**NOTE:** It is not advised to leave your token directly in your code, as it allows anyone with it to access your bot. If you intend to make your code public you should `store it securely <https://github.com/nextcord/nextcord/blob/master/examples/secure_token_storage.py/>`_.
+**NOTE:** It is not advised to leave your token directly in your code, as it allows anyone with it to access your bot. If you intend to make your code public you should `store it securely <https://github.com/mahirox36/nexon/blob/master/examples/secure_token_storage.py/>`_.
 
 Links
 ------

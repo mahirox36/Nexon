@@ -1,15 +1,15 @@
 # This example requires the 'members' privileged intents
 import random
 
-import nextcord
-from nextcord.ext import commands
+import nexon
+from nexon.ext import commands
 
-description = """An example bot to showcase the nextcord.ext.commands extension
+description = """An example bot to showcase the nexon.ext.commands extension
 module.
 
 There are a number of utility commands being showcased here."""
 
-intents = nextcord.Intents.default()
+intents = nexon.Intents.default()
 intents.members = True
 intents.message_content = True
 
@@ -54,7 +54,7 @@ async def repeat(ctx, times: int, content="repeating..."):
 
 
 @bot.command()
-async def joined(ctx, member: nextcord.Member):
+async def joined(ctx, member: nexon.Member):
     """Says when a member joined."""
     await ctx.send(f"{member.name} joined in {member.joined_at}")
 

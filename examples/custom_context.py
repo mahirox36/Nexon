@@ -1,7 +1,7 @@
 import random
 
-import nextcord
-from nextcord.ext import commands
+import nexon
+from nexon.ext import commands
 
 
 class MyContext(commands.Context):
@@ -14,7 +14,7 @@ class MyContext(commands.Context):
         try:
             # this will react to the command author's message
             await self.message.add_reaction(emoji)
-        except nextcord.HTTPException:
+        except nexon.HTTPException:
             # sometimes errors occur during this, for example
             # maybe you don't have permission to do that
             # we don't mind, so we can just ignore them
@@ -25,14 +25,14 @@ class Bot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    async def get_context(self, message: nextcord.Message, *, cls=MyContext):
+    async def get_context(self, message: nexon.Message, *, cls=MyContext):
         # when you override this method, you pass your new Context
         # subclass to the super() method, which tells the bot to
         # use the new MyContext class
         return await super().get_context(message, cls=cls)
 
 
-intents = nextcord.Intents.default()
+intents = nexon.Intents.default()
 intents.message_content = True
 bot = Bot(command_prefix="$", intents=intents)
 

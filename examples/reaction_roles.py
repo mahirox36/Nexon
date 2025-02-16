@@ -1,6 +1,6 @@
 # This example requires the 'members' privileged intents
-import nextcord
-from nextcord.ext import commands
+import nexon
+from nexon.ext import commands
 
 
 class Bot(commands.Bot):
@@ -9,18 +9,18 @@ class Bot(commands.Bot):
 
         self.role_message_id = 0  # ID of the message that can be reacted to to add/remove a role.
         self.emoji_to_role = {
-            nextcord.PartialEmoji(
+            nexon.PartialEmoji(
                 name="🔴"
             ): 0,  # ID of the role associated with unicode emoji '🔴'.
-            nextcord.PartialEmoji(
+            nexon.PartialEmoji(
                 name="🟡"
             ): 0,  # ID of the role associated with unicode emoji '🟡'.
-            nextcord.PartialEmoji(
+            nexon.PartialEmoji(
                 name="green", id=0
             ): 0,  # ID of the role associated with a partial emoji's ID.
         }
 
-    async def on_raw_reaction_add(self, payload: nextcord.RawReactionActionEvent):
+    async def on_raw_reaction_add(self, payload: nexon.RawReactionActionEvent):
         """Gives a role based on a reaction emoji."""
         # Make sure that the message the user is reacting to is the one we care about.
         if payload.message_id != self.role_message_id:
@@ -45,11 +45,11 @@ class Bot(commands.Bot):
         try:
             # Finally, add the role.
             await payload.member.add_roles(role)
-        except nextcord.HTTPException:
+        except nexon.HTTPException:
             # If we want to do something in case of errors we'd do it here.
             pass
 
-    async def on_raw_reaction_remove(self, payload: nextcord.RawReactionActionEvent):
+    async def on_raw_reaction_remove(self, payload: nexon.RawReactionActionEvent):
         """Removes a role based on a reaction emoji."""
         # Make sure that the message the user is reacting to is the one we care about.
         if payload.message_id != self.role_message_id:
@@ -81,12 +81,12 @@ class Bot(commands.Bot):
         try:
             # Finally, remove the role.
             await member.remove_roles(role)
-        except nextcord.HTTPException:
+        except nexon.HTTPException:
             # If we want to do something in case of errors we'd do it here.
             pass
 
 
-intents = nextcord.Intents.default()
+intents = nexon.Intents.default()
 intents.members = True
 intents.message_content = True
 

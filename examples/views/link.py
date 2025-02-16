@@ -1,12 +1,12 @@
 from urllib.parse import quote_plus
 
-import nextcord
-from nextcord.ext import commands
+import nexon
+from nexon.ext import commands
 
 
 # Define a simple View that gives us a google link button.
 # We take in `query` as the query that the command author requests for
-class Google(nextcord.ui.View):
+class Google(nexon.ui.View):
     def __init__(self, query: str):
         super().__init__()
         # We need to quote the query string to make a valid URL. Discord will raise an error if it isn't valid.
@@ -16,7 +16,7 @@ class Google(nextcord.ui.View):
         # Link buttons cannot be made with the decorator
         # Therefore we have to manually create one.
         # We add the quoted URL to the button, and add the button to the view.
-        self.add_item(nextcord.ui.Button(label="Click Here", url=url))
+        self.add_item(nexon.ui.Button(label="Click Here", url=url))
 
 
 bot = commands.Bot()

@@ -2,10 +2,10 @@ import asyncio
 import random
 from typing import Optional
 
-import nextcord
-from nextcord.ext import commands
+import nexon
+from nexon.ext import commands
 
-intents = nextcord.intents.default()
+intents = nexon.intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="$", intents=intents)
 

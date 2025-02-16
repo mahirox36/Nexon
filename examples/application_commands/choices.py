@@ -1,6 +1,6 @@
-import nextcord
-from nextcord import Interaction, SlashOption
-from nextcord.ext import commands
+import nexon
+from nexon import Interaction, SlashOption
+from nexon.ext import commands
 
 TESTING_GUILD_ID = 123456789  # Replace with your testing guild id
 
@@ -22,7 +22,7 @@ async def choose_a_number(
 @bot.slash_command(guild_ids=[TESTING_GUILD_ID])
 async def hi(
     interaction: Interaction,
-    member: nextcord.Member = SlashOption(name="user", description="User to say hi to"),
+    member: nexon.Member = SlashOption(name="user", description="User to say hi to"),
 ):
     await interaction.response.send_message(f"{interaction.user} just said hi to {member.mention}")
 

@@ -1,5 +1,5 @@
-from nextcord import Interaction, SlashOption
-from nextcord.ext import commands
+from nexon import Interaction, SlashOption
+from nexon.ext import commands
 
 TESTING_GUILD_ID = 123456789  # Replace with your testing guild id
 

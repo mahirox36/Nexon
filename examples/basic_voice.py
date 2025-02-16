@@ -2,8 +2,8 @@ import asyncio
 
 import youtube_dl
 
-import nextcord
-from nextcord.ext import commands
+import nexon
+from nexon.ext import commands
 
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ""
@@ -28,7 +28,7 @@ ffmpeg_options = {"options": "-vn"}
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 
-class YTDLSource(nextcord.PCMVolumeTransformer):
+class YTDLSource(nexon.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
 
@@ -47,7 +47,7 @@ class YTDLSource(nextcord.PCMVolumeTransformer):
             data = data["entries"][0]
 
         filename = data["url"] if stream else ytdl.prepare_filename(data)
-        return cls(nextcord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+        return cls(nexon.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
 class Music(commands.Cog):
@@ -55,7 +55,7 @@ class Music(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def join(self, ctx, *, channel: nextcord.VoiceChannel):
+    async def join(self, ctx, *, channel: nexon.VoiceChannel):
         """Joins a voice channel"""
 
         if ctx.voice_client is not None:
@@ -67,7 +67,7 @@ class Music(commands.Cog):
     async def play(self, ctx, *, query):
         """Plays a file from the local filesystem"""
 
-        source = nextcord.PCMVolumeTransformer(nextcord.FFmpegPCMAudio(query))
+        source = nexon.PCMVolumeTransformer(nexon.FFmpegPCMAudio(query))
         ctx.voice_client.play(source, after=lambda e: print(f"Player error: {e}") if e else None)
 
         await ctx.send(f"Now playing: {query}")
@@ -126,7 +126,7 @@ class Music(commands.Cog):
             ctx.voice_client.stop()
 
 
-intents = nextcord.Intents.default()
+intents = nexon.Intents.default()
 intents.message_content = True
 bot = commands.Bot(
     command_prefix="$", description="Relatively simple music bot example", intents=intents

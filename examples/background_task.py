@@ -1,4 +1,4 @@
-from nextcord.ext import commands, tasks
+from nexon.ext import commands, tasks
 
 
 class Bot(commands.Bot):

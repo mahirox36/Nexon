@@ -1,5 +1,5 @@
-import nextcord
-from nextcord.ext import application_checks, commands
+import nexon
+from nexon.ext import application_checks, commands
 
 
 # Define a simple View that persists between bot restarts
@@ -10,26 +10,26 @@ from nextcord.ext import application_checks, commands
 # prevent conflicts with other buttons the bot sends.
 # For this example the custom_id is prefixed with the name of the bot.
 # Note that custom_ids can only be up to 100 characters long.
-class PersistentView(nextcord.ui.View):
+class PersistentView(nexon.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @nextcord.ui.button(
-        label="Green", style=nextcord.ButtonStyle.green, custom_id="persistent_view:green"
+    @nexon.ui.button(
+        label="Green", style=nexon.ButtonStyle.green, custom_id="persistent_view:green"
     )
-    async def green(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+    async def green(self, button: nexon.ui.Button, interaction: nexon.Interaction):
         await interaction.response.send_message("This is green.", ephemeral=True)
 
-    @nextcord.ui.button(
-        label="Red", style=nextcord.ButtonStyle.red, custom_id="persistent_view:red"
+    @nexon.ui.button(
+        label="Red", style=nexon.ButtonStyle.red, custom_id="persistent_view:red"
     )
-    async def red(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+    async def red(self, button: nexon.ui.Button, interaction: nexon.Interaction):
         await interaction.response.send_message("This is red.", ephemeral=True)
 
-    @nextcord.ui.button(
-        label="Grey", style=nextcord.ButtonStyle.grey, custom_id="persistent_view:grey"
+    @nexon.ui.button(
+        label="Grey", style=nexon.ButtonStyle.grey, custom_id="persistent_view:grey"
     )
-    async def grey(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+    async def grey(self, button: nexon.ui.Button, interaction: nexon.Interaction):
         await interaction.response.send_message("This is grey.", ephemeral=True)
 
 

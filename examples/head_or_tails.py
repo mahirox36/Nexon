@@ -6,10 +6,10 @@
 
 import random
 
-import nextcord
-from nextcord.ext import commands
+import nexon
+from nexon.ext import commands
 
-intents = nextcord.Intents.default()
+intents = nexon.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="$", intents=intents)
 

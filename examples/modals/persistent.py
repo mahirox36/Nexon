@@ -1,5 +1,5 @@
-import nextcord
-from nextcord.ext import commands
+import nexon
+from nexon.ext import commands
 
 TESTING_GUILD_ID = 123456798  # Replace with your testing guild id
 
@@ -13,7 +13,7 @@ TESTING_GUILD_ID = 123456798  # Replace with your testing guild id
 # prevent conflicts with other modals the bot sends.
 # For this example the custom_id is prefixed with the name of the bot.
 # Note that custom_ids can only be up to 100 characters long.
-class FeedbackModal(nextcord.ui.Modal):
+class FeedbackModal(nexon.ui.Modal):
     def __init__(self):
         super().__init__(
             title="Feedback",
@@ -21,16 +21,16 @@ class FeedbackModal(nextcord.ui.Modal):
             timeout=None,
         )
 
-        self.discovered = nextcord.ui.TextInput(
+        self.discovered = nexon.ui.TextInput(
             label="How did you discover the bot?",
             placeholder="e.g. Discord server, friend, etc.",
             required=False,
-            style=nextcord.TextInputStyle.paragraph,
+            style=nexon.TextInputStyle.paragraph,
             custom_id="persistent_modal:discovered",
         )
         self.add_item(self.discovered)
 
-        self.rating = nextcord.ui.TextInput(
+        self.rating = nexon.ui.TextInput(
             label="How would you rate the bot out of 10?",
             placeholder="10",
             max_length=2,
@@ -38,16 +38,16 @@ class FeedbackModal(nextcord.ui.Modal):
         )
         self.add_item(self.rating)
 
-        self.improve = nextcord.ui.TextInput(
+        self.improve = nexon.ui.TextInput(
             label="How could the bot improve?",
             placeholder="e.g. add more features, improve the UI, etc.",
-            style=nextcord.TextInputStyle.paragraph,
+            style=nexon.TextInputStyle.paragraph,
             required=False,
             custom_id="persistent_modal:improve",
         )
         self.add_item(self.improve)
 
-    async def callback(self, interaction: nextcord.Interaction):
+    async def callback(self, interaction: nexon.Interaction):
         await interaction.send(
             f"Feedback from {interaction.user.mention}:\n"
             f"Rating: {self.rating.value}\n"
@@ -80,7 +80,7 @@ bot = Bot()
     description="Send your feedback to the bot developer!",
     guild_ids=[TESTING_GUILD_ID],
 )
-async def feedback(interaction: nextcord.Interaction):
+async def feedback(interaction: nexon.Interaction):
     await interaction.response.send_modal(FeedbackModal())
 
 

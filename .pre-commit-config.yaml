@@ -15,7 +15,7 @@ repos:
         entry: python -m scripts.autotyping
         types_or: [python, pyi]
         language: python
-        files: nextcord/
+        files: nexon/
         additional_dependencies:
           - autotyping==24.3.0
           - black==23.12.1

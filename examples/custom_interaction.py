@@ -1,10 +1,10 @@
-import nextcord
+import nexon
 
 
-class MyInteraction(nextcord.Interaction):
+class MyInteraction(nexon.Interaction):
     async def send_embed(self, *, title: str, description: str):
         """Easily send a basic embed."""
-        embed: nextcord.Embed = nextcord.Embed(
+        embed: nexon.Embed = nexon.Embed(
             title=title,
             description=description,
         )
@@ -12,8 +12,8 @@ class MyInteraction(nextcord.Interaction):
         await self.send(embed=embed)
 
 
-class Client(nextcord.Client):
-    def get_interaction(self, data, *, cls=nextcord.Interaction):
+class Client(nexon.Client):
+    def get_interaction(self, data, *, cls=nexon.Interaction):
         # when you override this method, you pass your new Interaction
         # subclass to the super() method, which tells the bot to
         # use the new MyInteraction class
