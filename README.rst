@@ -128,6 +128,6 @@ Links
 ------
 
 - `Documentation <https://docs.nextcord.dev/>`_
-- `Official Discord Server <https://discord.gg/nexon>`_
+- `Official Discord Server <https://discord.gg/HC2bryKU5Y>`_
 - `Official Nextcord Discord Server <https://discord.gg/nextcord>`_
 - `Discord Developers Server <https://discord.gg/discord-developers>`_
