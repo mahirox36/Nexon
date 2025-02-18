@@ -4,11 +4,11 @@
 .. image:: https://img.shields.io/discord/881118111967883295?color=blue&label=discord
    :target: https://discord.gg/nextcord
    :alt: Discord server invite
-.. image:: https://img.shields.io/pypi/v/nextcord.svg
-   :target: https://pypi.org/project/nextcord/
+.. image:: https://img.shields.io/pypi/v/nexon.svg
+   :target: https://pypi.org/project/nexon/
    :alt: PyPI version info
-.. image:: https://img.shields.io/pypi/dm/nextcord?color=informational&label=pypi%20downloads
-   :target: https://pypi.org/project/nextcord/
+.. image:: https://img.shields.io/pypi/dm/nexon?color=informational&label=pypi%20downloads
+   :target: https://pypi.org/project/nexon/
    :alt: PyPI version info
 .. image:: https://img.shields.io/pypi/pyversions/nextcord.svg
    :target: https://pypi.org/project/nextcord/
