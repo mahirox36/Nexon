@@ -11,7 +11,7 @@
    :target: https://pypi.org/project/nexon/
    :alt: PyPI version info
 .. image:: https://img.shields.io/pypi/pyversions/nextcord.svg
-   :target: https://pypi.org/project/nextcord/
+   :target: https://pypi.org/project/nexon/
    :alt: PyPI supported Python versions
 .. image:: https://img.shields.io/readthedocs/nextcord
    :target: https://docs.nextcord.dev/
@@ -55,30 +55,30 @@ To install the library without full voice support, you can just run the followin
 .. code:: sh
 
     # Linux/macOS
-    python3 -m pip install -U nextcord
+    python3 -m pip install -U nexon
 
     # Windows
-    py -3 -m pip install -U nextcord
+    py -3 -m pip install -U nexon
 
 Otherwise to get voice support you should run the following command:
 
 .. code:: sh
 
     # Linux/macOS
-    python3 -m pip install -U "nextcord[voice]"
+    python3 -m pip install -U "nexon[voice]"
 
     # Windows
-    py -3 -m pip install -U nextcord[voice]
+    py -3 -m pip install -U nexon[voice]
 
 To install additional packages for speedup, run the following command:
 
 .. code:: sh
 
     # Linux/macOS
-    python3 -m pip install -U "nextcord[speed]"
+    python3 -m pip install -U "nexon[speed]"
 
     # Windows
-    py -3 -m pip install -U nextcord[speed]
+    py -3 -m pip install -U nexon[speed]
 
 
 To install the development version, do the following:
@@ -86,7 +86,7 @@ To install the development version, do the following:
 .. code:: sh
 
     $ git clone https://github.com/mahirox36/nexon/
-    $ cd nextcord
+    $ cd nexon
     $ python3 -m pip install -U .[voice]
 
 
@@ -108,14 +108,14 @@ Quick Example
 
 .. code:: py
 
-    import nextcord
-    from nextcord.ext import commands
+    import nexon
+    from nexon.ext import commands
 
 
     bot = commands.Bot()
 
     @bot.slash_command(description="Replies with pong!")
-    async def ping(interaction: nextcord.Interaction):
+    async def ping(interaction: nexon.Interaction):
         await interaction.send("Pong!", ephemeral=True)
 
     bot.run("token")
@@ -128,5 +128,6 @@ Links
 ------
 
 - `Documentation <https://docs.nextcord.dev/>`_
-- `Official Discord Server <https://discord.gg/nextcord>`_
+- `Official Discord Server <https://discord.gg/nexon>`_
+- `Official Nextcord Discord Server <https://discord.gg/nextcord>`_
 - `Discord Developers Server <https://discord.gg/discord-developers>`_
