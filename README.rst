@@ -20,6 +20,21 @@
 Nexon
 --------
 
+This is a custom fork of Nextcord, designed to extend its features with additional utilities and enhancements while maintaining compatibility with the original API.
+
+Key Features in This Fork
+--------
+* A powerful data collection and management system for users and guilds.
+* Adds achievement badges to users.
+* Efficiently tracks and manages unique IDs.
+* Advanced Logging: Improved logging for debugging and monitoring.
+* AI-Powered Features: Integration with Ollama for AI-based chatbot functions.
+* Enhancements to Core Classes: User, Member, Guild, and more now include additional utilities.
+
+
+
+Nextcord
+--------
 A modern, easy-to-use, feature-rich, and async-ready API wrapper for Discord written in Python.
 
 
