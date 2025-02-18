@@ -1,8 +1,8 @@
 .. image:: https://raw.githubusercontent.com/mahirox36/nexon/master/assets/repo-banner.svg
    :alt: Nextcord
 
-.. image:: https://img.shields.io/discord/881118111967883295?color=blue&label=discord
-   :target: https://discord.gg/nextcord
+.. image:: https://img.shields.io/discord/1262297191884521514?color=blue&label=discord
+   :target: https://discord.gg/HC2bryKU5Y
    :alt: Discord server invite
 .. image:: https://img.shields.io/pypi/v/nexon.svg
    :target: https://pypi.org/project/nexon/
