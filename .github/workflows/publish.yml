@@ -1,9 +1,11 @@
+name: Publish Python Package to PyPI
+
 on:
   release:
     types: [published]
 
 jobs:
-  regular:
+  deploy:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -14,21 +16,33 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install poetry
-        run: |
-          pipx install poetry
-          poetry self add "poetry-dynamic-versioning[plugin] @ git+https://github.com/nexon/poetry-dynamic-versioning@master"
-
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Compile package
+      - name: Install poetry
+        run: |
+          pipx install poetry
+
+      - name: Configure poetry
+        run: |
+          poetry config virtualenvs.create false
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-interaction
+
+      # If you still want to use poetry-dynamic-versioning, use the main repo
+      - name: Install poetry-dynamic-versioning
+        run: |
+          poetry self add "poetry-dynamic-versioning[plugin]"
+
+      - name: Build package
         run: |
           poetry build
 
-      - name: Upload package
+      - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
