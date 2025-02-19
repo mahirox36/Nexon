@@ -17,7 +17,7 @@ jobs:
       - name: Install poetry
         run: |
           pipx install poetry
-          poetry self add "poetry-dynamic-versioning[plugin] @ git+https://github.com/mahirox36/poetry-dynamic-versioning@master"
+          poetry self add "poetry-dynamic-versioning[plugin] @ git+https://github.com/nexon/poetry-dynamic-versioning@master"
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
