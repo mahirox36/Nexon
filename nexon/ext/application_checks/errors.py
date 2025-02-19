@@ -21,6 +21,7 @@ __all__ = (
     "ApplicationNotOwner",
     "ApplicationNSFWChannelRequired",
     "ApplicationCheckForBotOnly",
+    "ApplicationOnCooldown"
 )
 
 
@@ -253,3 +254,18 @@ class ApplicationCheckForBotOnly(ApplicationCheckFailure):
 
     def __init__(self) -> None:
         super().__init__("This application check can only be used for ext.commands.Bot.")
+
+class ApplicationOnCooldown(ApplicationCheckFailure):
+    """Exception raised when a slash command is used while it is on cooldown.
+
+    This inherits from :exc:`~.ApplicationCheckFailure`
+
+    Attributes
+    ----------
+    time_left: :class:`float`
+        The amount of time left in seconds before the command can be used again.
+    """
+
+    def __init__(self, time_left: float):
+        self.time_left = time_left
+        super().__init__(f"Command is on cooldown. Try again in {time_left:.2f} seconds.")

@@ -133,7 +133,7 @@ def _cleanup_loop(loop: asyncio.AbstractEventLoop) -> None:
     This will cancel all tasks in the given loop, including any async tasks awaiting execution or potentially
     mid-execution.
 
-    This does not restrict itself to nexon-module tasks. If the loop provided is being used for non-Nexon tasks,
+    This does not restrict itself to nexon-module tasks. If the loop provided is being used for non-Nextcord tasks,
     this WILL cancel them as well.
 
     Parameters
@@ -881,7 +881,7 @@ class Client:
         """
         loop = self.loop or asyncio.new_event_loop()
 
-        # This allows Nexon to gracefully close when Terminate/Signal 7 is received.
+        # This allows Nextcord to gracefully close when Terminate/Signal 7 is received.
         with contextlib.suppress(NotImplementedError):
 
             def graceful_close() -> None:
@@ -901,7 +901,7 @@ class Client:
             # This allows tasks that are pending cancellation to be cancelled and cleaned up. If a better
             #  method of "wait until all marked-as-cancelled tasks are cancelled" is found, replace this.
             loop.run_until_complete(asyncio.sleep(0.1))
-            # This will cancel all tasks, including non-Nexon ones, in the loop and close it. If you don't want
+            # This will cancel all tasks, including non-Nextcord ones, in the loop and close it. If you don't want
             # that to occur, run .start() and .close() manually.
             _cleanup_loop(loop)
 
@@ -1448,7 +1448,7 @@ class Client:
 
         for guild in self._connection.guilds:
             me = guild.me
-            if me is None:  # pyright: ignore[reportUnnecessaryComparison]
+            if me is None: 
                 continue
 
             if activity is not None:

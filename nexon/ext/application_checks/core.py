@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import functools
+import time
 from typing import TYPE_CHECKING, Callable, Dict, Union
 
 import nexon
@@ -28,12 +29,13 @@ from .errors import (
     ApplicationNotOwner,
     ApplicationNSFWChannelRequired,
     ApplicationPrivateMessageOnly,
+    ApplicationOnCooldown,
 )
 
 if TYPE_CHECKING:
     from nexon.types.checks import ApplicationCheck, CoroFunc
 
-
+cooldowns= {}
 __all__ = (
     "check",
     "check_any",
@@ -49,6 +51,7 @@ __all__ = (
     "guild_only",
     "is_owner",
     "is_nsfw",
+    "cooldown",
     "application_command_before_invoke",
     "application_command_after_invoke",
 )
@@ -695,6 +698,46 @@ def is_nsfw() -> AC:
 
     return check(pred)
 
+def cooldown(cooldown_time: int) -> AC:
+    """
+    A :func:`.check` that applies a cooldown to a command for a specified time
+    period. This prevents a user from using a command repeatedly within the
+    cooldown period.
+
+    Parameters
+    ----------
+    cooldown_time: :class:`int`
+        The cooldown time in seconds.
+
+    Example
+    -------
+
+    .. code-block:: python3
+
+        @bot.slash_command()
+        @application_checks.cooldown(10)
+        async def slowcmd(interaction: Interaction):
+            await interaction.response.send_message('This command is on cooldown!')
+    """
+    async def pred(interaction: Interaction) -> bool:
+        global cooldowns
+        name = interaction.application_command.name  # type: ignore
+        user_id = interaction.user.id # type: ignore
+
+        if name not in cooldowns:
+            cooldowns[name] = {}
+
+        # Check if the user is on cooldown
+        if user_id in cooldowns[name]:
+            time_left = cooldowns[name][user_id] - time.time()
+            if time_left > 0:
+                raise ApplicationOnCooldown(time_left)
+
+        # Set a new cooldown for the user
+        cooldowns[name][user_id] = time.time() + cooldown_time
+        return True
+
+    return check(pred)
 
 def application_command_before_invoke(coro) -> AC:
     """A decorator that registers a coroutine as a pre-invoke hook.
