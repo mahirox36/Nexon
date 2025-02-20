@@ -29,11 +29,6 @@ jobs:
         run: |
           poetry config virtualenvs.create false
 
-      - name: Install dependencies
-        run: |
-          poetry install --no-interaction
-
-      # If you still want to use poetry-dynamic-versioning, use the main repo
       - name: Install poetry-dynamic-versioning
         run: |
           poetry self add "poetry-dynamic-versioning[plugin]"
