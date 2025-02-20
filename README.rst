@@ -23,7 +23,7 @@ Nexon
 This is a custom fork of Nextcord, designed to extend its features with additional utilities and enhancements while maintaining compatibility with the original API.
 
 Key Features of Nexon
--------------
+------------------------
 * A powerful data collection and management system for users and guilds.
 * Adds achievement badges to users.
 * Efficiently tracks and manages unique IDs.
