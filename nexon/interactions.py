@@ -1403,6 +1403,41 @@ class InteractionResponse:
         if author != MISSING: embed.set_author(name=author[0], url=author[1])
         return await self.send_message(embed=embed,ephemeral=ephemeral)
 
+    async def start_typing(self, time: int = 120) -> None:
+        """|coro|
+
+        Starts the typing indicator for the interaction.
+
+        Parameters
+        ----------
+        time: :class:`int`
+            The amount of time in seconds to keep the typing indicator going.
+
+        Raises
+        ------
+        ValueError
+            The time was not between 1 and 120 seconds.
+        """
+        if time < 1 or time > 120:
+            raise ValueError("Time must be between 1 and 120 seconds")
+
+        if self._parent.channel is None:
+            return
+        
+        typing_manager = self._parent._state.typing_manager
+        
+        await typing_manager.trigger_typing(self._parent.channel, time) # type: ignore
+
+    async def stop_typing(self) -> None:
+        """|coro|
+
+        Stops the typing indicator for the interaction.
+        """
+        if self._parent.channel is None:
+            return
+        typing_manager = self._parent._state.typing_manager
+        await typing_manager.stop_typing(self._parent.channel.id)
+
 class _InteractionMessageMixin:
     __slots__ = ()
     _interaction: Interaction

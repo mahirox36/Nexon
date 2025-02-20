@@ -51,6 +51,7 @@ from .scheduled_events import ScheduledEvent, ScheduledEventUser
 from .stage_instance import StageInstance
 from .sticker import GuildSticker
 from .threads import Thread, ThreadMember
+from .typing import TypingManager
 from .ui.modal import Modal, ModalStore
 from .ui.view import View, ViewStore
 from .user import ClientUser, User
@@ -246,6 +247,9 @@ class ConnectionState:
             self.deref_user = self.deref_user_no_intents
 
         self.parsers = parsers = {}
+        
+        self.typing_manager = TypingManager()
+        
         for attr, func in inspect.getmembers(self):
             if attr.startswith("parse_"):
                 parsers[attr[6:].upper()] = func

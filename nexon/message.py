@@ -2140,6 +2140,41 @@ class Message(Hashable):
 
         return data
 
+    async def start_typing(self, time: int = 120) -> None:
+        """|coro|
+
+        Starts the typing indicator for the interaction.
+
+        Parameters
+        ----------
+        time: :class:`int`
+            The amount of time in seconds to keep the typing indicator going.
+
+        Raises
+        ------
+        ValueError
+            The time was not between 1 and 120 seconds.
+        """
+        if time < 1 or time > 120:
+            raise ValueError("Time must be between 1 and 120 seconds")
+
+        if self.channel is None:
+            return
+        
+        typing_manager = self._state.typing_manager
+        
+        await typing_manager.trigger_typing(self.channel, time) # type: ignore
+
+    async def stop_typing(self) -> None:
+        """|coro|
+
+        Stops the typing indicator for the interaction.
+        """
+        if self.channel is None:
+            return
+        typing_manager = self._state.typing_manager
+        await typing_manager.stop_typing(self.channel.id)
+
 
 class PartialMessage(Hashable):
     """Represents a partial message to aid with working messages when only
