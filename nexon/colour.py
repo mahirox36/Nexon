@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import colorsys
+from dataclasses import dataclass
 import random
 from typing import TYPE_CHECKING, Any, Optional, Tuple, TypeVar, Union
 
@@ -12,6 +13,8 @@ if TYPE_CHECKING:
 __all__ = (
     "Colour",
     "Color",
+    "PreColour",
+    "PreColor",
 )
 
 CT = TypeVar("CT", bound="Colour")
@@ -303,5 +306,23 @@ class Colour:
         """
         return cls(0xFEE75C)
 
+@dataclass
+class PreColour:
+    """
+    A preconfigured set of colours
+    """
+    info: Colour = Colour(0xff69b4)
+    warn: Colour = Colour(0xffd700)
+    error: Colour = Colour(0xb22222)
+    debug: Colour = Colour(0x6a5acd)
+    critical: Colour = Colour(0xff2626)
+    none_set: Colour = Colour(0xe9e9e9)
+    
+    @classmethod
+    def customize(cls, **kwargs):
+        for key, value in kwargs.items():
+            if hasattr(cls, key) and isinstance(value, Colour):
+                setattr(cls, key, value)
 
 Color = Colour
+PreColor = PreColour

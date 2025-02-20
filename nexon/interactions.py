@@ -20,6 +20,8 @@ from typing import (
     Union,
 )
 
+from nexon.colour import PreColour
+
 from . import utils
 from .channel import ChannelType, PartialMessageable
 from .embeds import Embed
@@ -1140,7 +1142,266 @@ class InteractionResponse:
             await parent.delete_original_message(delay=delete_after)
 
         return state._get_message(message_id)
+    
+    async def send_info(
+        self,
+        description: str,
+        title: str = "Info",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime] = None,
+        ephemeral: bool = True):
+        """|coro|
 
+        Responds to this interaction by sending a ephemeral message with a title and description.
+
+        Parameters
+        ----------
+        description: :class:`str`
+            The description of the message.
+        title: :class:`str`
+            The title of the message.
+        footer: Optional[:class:`str`]
+            The footer of the message. ``None`` removes the footer.
+        author: Optional[List[Union[:class:`str`, :class:`str`]]]
+            The author of the message. ``None`` removes the author.
+        timestamp: Optional[:class:`datetime.datetime`]
+            The timestamp of the message. ``None`` removes the timestamp.
+        ephemeral: :class:`bool`
+            Whether the message is ephemeral. Defaults to ``True``.
+
+        Raises
+        ------
+        HTTPException
+            Sending the message failed.
+        InvalidArgument
+            An object not of type :class:`str` was passed to ``description``, ``title``, or ``footer``.
+        TypeError
+            An object not of type :class:`datetime.datetime` was passed to ``timestamp``.
+        InteractionResponded
+            This interaction has already been responded to before.
+
+        Returns
+        -------
+        :class:`InteractionMessage`
+            The message that was sent.
+        """
+        embed = Embed(
+            title= title,
+            description=description,
+            timestamp=timestamp,
+            colour=PreColour.info)
+        if footer: embed.set_footer(text=footer)
+        if author != MISSING: embed.set_author(name=author[0], url=author[1])
+        return await self.send_message(embed=embed,ephemeral=ephemeral)
+
+    async def send_warn(
+        self,
+        description: str,
+        title: str = "Warning",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime] = None,
+        ephemeral: bool = True):
+        """|coro|
+
+        Responds to this interaction by sending a ephemeral message with a title and description.
+
+        Parameters
+        ----------
+        description: :class:`str`
+            The description of the message.
+        title: :class:`str`
+            The title of the message.
+        footer: Optional[:class:`str`]
+            The footer of the message. ``None`` removes the footer.
+        author: Optional[List[Union[:class:`str`, :class:`str`]]]
+            The author of the message. ``None`` removes the author.
+        timestamp: Optional[:class:`datetime.datetime`]
+            The timestamp of the message. ``None`` removes the timestamp.
+        ephemeral: :class:`bool`
+            Whether the message is ephemeral. Defaults to ``True``.
+
+        Raises
+        ------
+        HTTPException
+            Sending the message failed.
+        InvalidArgument
+            An object not of type :class:`str` was passed to ``description``, ``title``, or ``footer``.
+        TypeError
+            An object not of type :class:`datetime.datetime` was passed to ``timestamp``.
+        InteractionResponded
+            This interaction has already been responded to before.
+
+        Returns
+        -------
+        :class:`InteractionMessage`
+            The message that was sent.
+        """
+        embed = Embed(
+            title= title,
+            description=description,
+            timestamp=timestamp,
+            colour=PreColour.warn)
+        if footer: embed.set_footer(text=footer)
+        if author != MISSING: embed.set_author(name=author[0], url=author[1])
+        return await self.send_message(embed=embed,ephemeral=ephemeral)
+    
+    async def send_error(
+        self,
+        description: str,
+        title: str = "Error",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime] = None,
+        ephemeral: bool = True):
+        """|coro|
+
+        Responds to this interaction by sending a ephemeral message with a title and description.
+
+        Parameters
+        ----------
+        description: :class:`str`
+            The description of the message.
+        title: :class:`str`
+            The title of the message.
+        footer: Optional[:class:`str`]
+            The footer of the message. ``None`` removes the footer.
+        author: Optional[List[Union[:class:`str`, :class:`str`]]]
+            The author of the message. ``None`` removes the author.
+        timestamp: Optional[:class:`datetime.datetime`]
+            The timestamp of the message. ``None`` removes the timestamp.
+        ephemeral: :class:`bool`
+            Whether the message is ephemeral. Defaults to ``True``.
+
+        Raises
+        ------
+        HTTPException
+            Sending the message failed.
+        InvalidArgument
+            An object not of type :class:`str` was passed to ``description``, ``title``, or ``footer``.
+        TypeError
+            An object not of type :class:`datetime.datetime` was passed to ``timestamp``.
+        InteractionResponded
+            This interaction has already been responded to before.
+
+        Returns
+        -------
+        :class:`InteractionMessage`
+            The message that was sent.
+        """
+        embed = Embed(
+            title= title,
+            description=description,
+            timestamp=timestamp,
+            colour=PreColour.error)
+        if footer: embed.set_footer(text=footer)
+        if author != MISSING: embed.set_author(name=author[0], url=author[1])
+        return await self.send_message(embed=embed,ephemeral=ephemeral)
+    
+    async def send_debug(
+        self,
+        description: str,
+        title: str = "Debug",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime] = None,
+        ephemeral: bool = True):
+        """|coro|
+
+        Responds to this interaction by sending a ephemeral message with a title and description.
+
+        Parameters
+        ----------
+        description: :class:`str`
+            The description of the message.
+        title: :class:`str`
+            The title of the message.
+        footer: Optional[:class:`str`]
+            The footer of the message. ``None`` removes the footer.
+        author: Optional[List[Union[:class:`str`, :class:`str`]]]
+            The author of the message. ``None`` removes the author.
+        timestamp: Optional[:class:`datetime.datetime`]
+            The timestamp of the message. ``None`` removes the timestamp.
+        ephemeral: :class:`bool`
+            Whether the message is ephemeral. Defaults to ``True``.
+
+        Raises
+        ------
+        HTTPException
+            Sending the message failed.
+        InvalidArgument
+            An object not of type :class:`str` was passed to ``description``, ``title``, or ``footer``.
+        TypeError
+            An object not of type :class:`datetime.datetime` was passed to ``timestamp``.
+        InteractionResponded
+            This interaction has already been responded to before.
+
+        Returns
+        -------
+        :class:`InteractionMessage`
+            The message that was sent.
+        """
+        embed = Embed(
+            title= title,
+            description=description,
+            timestamp=timestamp,
+            colour=PreColour.debug)
+        if footer: embed.set_footer(text=footer)
+        if author != MISSING: embed.set_author(name=author[0], url=author[1])
+        return await self.send_message(embed=embed,ephemeral=ephemeral)
+    
+    async def send_critical(
+        self,
+        description: str,
+        title: str = "Critical",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime] = None,
+        ephemeral: bool = True):
+        """|coro|
+
+        Responds to this interaction by sending a ephemeral message with a title and description.
+
+        Parameters
+        ----------
+        description: :class:`str`
+            The description of the message.
+        title: :class:`str`
+            The title of the message.
+        footer: Optional[:class:`str`]
+            The footer of the message. ``None`` removes the footer.
+        author: Optional[List[Union[:class:`str`, :class:`str`]]]
+            The author of the message. ``None`` removes the author.
+        timestamp: Optional[:class:`datetime.datetime`]
+            The timestamp of the message. ``None`` removes the timestamp.
+        ephemeral: :class:`bool`
+            Whether the message is ephemeral. Defaults to ``True``.
+
+        Raises
+        ------
+        HTTPException
+            Sending the message failed.
+        InvalidArgument
+            An object not of type :class:`str` was passed to ``description``, ``title``, or ``footer``.
+        TypeError
+            An object not of type :class:`datetime.datetime` was passed to ``timestamp``.
+        InteractionResponded
+            This interaction has already been responded to before.
+
+        Returns
+        -------
+        :class:`InteractionMessage`
+            The message that was sent.
+        """
+        embed = Embed(
+            title= title,
+            description=description,
+            timestamp=timestamp,
+            colour=PreColour.critical)
+        if footer: embed.set_footer(text=footer)
+        if author != MISSING: embed.set_author(name=author[0], url=author[1])
+        return await self.send_message(embed=embed,ephemeral=ephemeral)
 
 class _InteractionMessageMixin:
     __slots__ = ()
