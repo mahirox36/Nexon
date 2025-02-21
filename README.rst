@@ -24,12 +24,11 @@ This is a custom fork of Nextcord, designed to extend its features with addition
 
 Key Features of Nexon
 ------------------------
-* A powerful data collection and management system for users and guilds.
-* Adds achievement badges to users.
-* Efficiently tracks and manages unique IDs.
-* Advanced Logging: Improved logging for debugging and monitoring.
-* AI-Powered Features: Integration with Ollama for AI-based chatbot functions.
-* Enhancements to Core Classes: User, Member, Guild, and more now include additional utilities.
+* **Optimized Performance**: A fast, cached data collection and management system for users and guilds.
+* **Achievement Badges**: Automatically adds achievement badges to users.
+* **Pre-configured Colour**: Colour schemes are synced across info, warning, and error messages for consistency.
+* **Advanced Logging**: Enhanced logging for better debugging and monitoring.
+* **Core Class Enhancements**: Expanded utilities for User, Member, Guild, and more.
 
 
 
