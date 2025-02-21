@@ -2092,6 +2092,22 @@ class MessageReferenceType(IntEnum):
     forward = 1
     """The reference is used to point to a message."""
 
+class Rarity(IntEnum):
+    """Represents the rarity of a sticker.
+
+    .. versionadded:: Nexon 0.2.1
+    """
+
+    common = 1
+    """The sticker is common."""
+    uncommon = 2
+    """The sticker is uncommon."""
+    rare = 3
+    """The sticker is rare."""
+    epic = 4
+    """The sticker is epic."""
+    legendary = 5
+    """The sticker is legendary."""
 
 T = TypeVar("T")
 

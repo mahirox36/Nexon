@@ -47,7 +47,7 @@ class BotStatistics:
         return cls(**data)
     
     @classmethod
-    def from_member(cls, member: Member | User) -> 'BotStatistics':
+    def from_member(cls, member: Union['Member', 'User']) -> 'BotStatistics':
         return cls(
             joined_at=str(member.created_at)
         )
@@ -266,7 +266,7 @@ class UserData:
         return data
 
     @classmethod
-    def from_member(cls, member: Member | User) -> 'UserData':
+    def from_member(cls, member: Union['Member', 'User']) -> 'UserData':
         return cls(
             name=member.display_name,
             joined_at=str(member.created_at),
@@ -279,13 +279,12 @@ class UserManager(DataManager):
     __slots__ = (
         "user_id",
         "_user_data",
-        "user_data"
         )
-    def __init__(self, user: Union[User, Member], defaultClass: Type[UserData | BotStatistics] = UserData):
+    def __init__(self, user: Union['Member', 'User'], defaultClass: Type[UserData | BotStatistics] = UserData):
         self.data: Dict[str, Any] = {}
         super().__init__(
             name="Users",
-            file=str(user.id),
+            file_name=str(user.id),
             default=defaultClass.from_member(user).to_dict(),
             entity_type="Users",
             add_name_folder=False
@@ -317,7 +316,7 @@ class UserManager(DataManager):
         """Access the UserData object"""
         return self._user_data
     
-    def generalUpdateInfo(self, user: Member | User): #bruh u just add the user in the init why adding it here again?
+    def generalUpdateInfo(self, user: Union['Member', 'User']): #bruh u just add the user in the init why adding it here again?
         if user.display_name == self.user_data.name:
             return
         else:
@@ -402,7 +401,7 @@ class UserManager(DataManager):
         raise AttributeError(f"'UserManager' object has no attribute '{name}'")
     
 class BotManager(UserManager):
-    def __init__(self, user: Union[User, Member]):
+    def __init__(self, user: Union['Member', 'User']):
         super().__init__(user=user, defaultClass=BotStatistics)
         self._user_data: BotStatistics = self._load_user_data()
     
