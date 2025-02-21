@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict
 from datetime import datetime
-from .enums import Rarity
+from .enums import ComparisonType, Rarity, RequirementType
 
 if TYPE_CHECKING:
     from .user import User
@@ -21,6 +21,55 @@ __all__ = (
     "BadgeManager"
 )
 
+
+
+class BadgeRequirement:
+    """Represents a requirement for earning a badge"""
+    def __init__(self, 
+                 requirement_type: RequirementType, 
+                 value: int = 1,
+                 comparison: ComparisonType = ComparisonType.GREATER_EQUAL,
+                 specific_value: str = ""):
+        self.type = requirement_type
+        self.value = value
+        self.comparison = comparison
+        self.specific_value = specific_value
+
+    def to_dict(self) -> dict:
+        return {
+            "type": self.type.value,
+            "value": self.value, 
+            "comparison": self.comparison.value,
+            "specific_value": self.specific_value
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'BadgeRequirement':
+        return cls(
+            requirement_type=RequirementType(data["type"]),
+            value=data.get("value", 1),
+            comparison=ComparisonType(data.get("comparison", "greater_equal")),
+            specific_value=data.get("specific_value", "")
+        )
+
+    def check(self, actual_value: int, second_value: Optional[int] = None) -> bool:
+        """Check if the requirement is met based on comparison type"""
+        if second_value is not None:
+            # For time-based comparisons that need two values
+            return self._compare_values(actual_value, second_value)
+        
+        # For standard numeric comparisons
+        return self._compare_values(actual_value, self.value)
+    
+    def _compare_values(self, value1: int, value2: int) -> bool:
+        """Helper method to compare values based on comparison type"""
+        return {
+            ComparisonType.EQUAL: lambda: value1 == value2,
+            ComparisonType.GREATER: lambda: value1 > value2,
+            ComparisonType.LESS: lambda: value1 < value2,
+            ComparisonType.GREATER_EQUAL: lambda: value1 >= value2,
+            ComparisonType.LESS_EQUAL: lambda: value1 <= value2,
+        }[self.comparison]()
 
 @dataclass
 class BadgePayload:
@@ -161,3 +210,19 @@ class BadgeManager:
         for badge in badges:
             if badge.id not in current_badge_ids:
                 await self.add_badge(badge)
+
+    async def get_user_unowned_badges(self, user: Union['User', 'Member']) -> List[BadgePayload]:
+        """Get all badges the user doesn't have"""
+        all_badges = await self.get_all_badges()
+        user_badges = await self.get_user_badges(user)
+        return [badge for badge in all_badges if badge not in user_badges]
+
+    async def get_user_hidden_badges(self, user: Union['User', 'Member']) -> List[BadgePayload]:
+        """Get all hidden badges the user has"""
+        user_badges = await self.get_user_badges(user)
+        return [badge for badge in user_badges if badge.hidden]
+
+    async def get_user_unowned_hidden_badges(self, user: Union['User', 'Member']) -> List[BadgePayload]:
+        """Get all hidden badges the user doesn't have"""
+        unowned_badges = await self.get_user_unowned_badges(user)
+        return [badge for badge in unowned_badges if badge.hidden]

@@ -53,6 +53,9 @@ __all__ = (
     "IntegrationType",
     "InteractionContextType",
     "MessageReferenceType",
+    "Rarity",
+    "RequirementType",
+    "ComparisonType",
 )
 
 
@@ -2108,6 +2111,57 @@ class Rarity(IntEnum):
     """The sticker is epic."""
     legendary = 5
     """The sticker is legendary."""
+
+class RequirementType(Enum):
+    """
+    Enumeration of requirement types for tracking user activities and achievements.
+    
+    .. versionadded:: Nexon 0.2.1
+    """
+    # Existing types
+    MESSAGE_COUNT = "message_count"
+    MESSAGE_SENT = "message_sent" 
+    COMMAND_USE = "command_use"
+    REACTION_RECEIVED = "reaction_received"
+    REACTION_GIVEN = "reaction_given"
+    GIF_SENT = "gif_sent"
+    EMOJI_USED = "emoji_used"
+    CUSTOM_EMOJI_USED = "custom_emoji_used"
+    ATTACHMENT_SENT = "attachment_sent"
+    MENTION_COUNT = "mention_count"
+    UNIQUE_MENTION_COUNT = "unique_mention_count"
+    LINK_SHARED = "link_shared"
+    CONTENT_MATCH = "content_match"
+    CHANNEL_ACTIVITY = "channel_activity"
+    TIME_BASED = "time_based"
+    OWNER_INTERACTION = "owner_interaction"
+    INACTIVE_DURATION = "inactive_duration"
+    UNIQUE_EMOJI_COUNT = "unique_emoji_count"
+    SPECIFIC_EMOJI = "specific_emoji"
+    ALL_COMMANDS = "all_commands"
+
+    # New suggested types
+    THREAD_CREATION = "thread_creation"  # Track thread creation
+    THREAD_PARTICIPATION = "thread_participation"  # Track participation in threads
+    INVITE_USAGE = "invite_usage"  # Track how many people joined via user's invites
+    FORUM_POSTS = "forum_posts"  # Track posts in forum channels
+    EVENT_CREATION = "event_creation"  # Track scheduled event creation
+    EVENT_PARTICIPATION = "event_participation"  # Track event attendance
+    MESSAGE_PIN = "message_pin"  # Track messages that get pinned
+    BUTTON_CLICKS = "button_clicks"  # Track interaction with bot buttons
+    SELECT_MENU_USAGE = "select_menu_usage"  # Track usage of select menus
+    MODAL_SUBMISSIONS = "modal_submissions"  # Track form submissions
+    SLASH_COMMAND_VARIETY = "slash_command_variety"  # Track unique slash commands used
+    MESSAGE_EDIT = "message_edit"  # Track message edits
+    MESSAGE_DELETE = "message_delete"  # Track message deletions
+    STICKER_USAGE = "sticker_usage"  # Track sticker usage
+
+class ComparisonType(Enum):
+    EQUAL = "equal"
+    GREATER = "greater"
+    LESS = "less"
+    GREATER_EQUAL = "greater_equal"
+    LESS_EQUAL = "less_equal"
 
 T = TypeVar("T")
 

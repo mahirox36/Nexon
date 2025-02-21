@@ -49,6 +49,8 @@ from .application_command import (
 from .backoff import ExponentialBackoff
 from .channel import PartialMessageable, _threaded_channel_factory
 from .colour import PreColour
+from .data.user import UserManager
+from .dataManager import DataManager
 from .emoji import Emoji
 from .enums import (
     ApplicationCommandType,
@@ -287,6 +289,18 @@ class Client:
         Defaults to ``logging.INFO``
     
         .. versionadded:: Nexon 0.1.2
+    
+    data_manager: Optional[:class:`DataManager`]
+        The data manager to use for saving and loading data.
+        Defaults to ``None``
+        
+        .. versionadded:: Nexon 0.1.2
+    
+    enable_user_data: :class:`bool`
+        Whether to enable user data saving and loading.
+        Defaults to ``False``
+    
+        .. versionadded:: Nexon 0.1.2
 
     Attributes
     ----------
@@ -326,6 +340,8 @@ class Client:
         default_guild_ids: Optional[List[int]] = None,
         enable_logger_console: bool = True,
         logger_level: int = logging.INFO,
+        data_manager: Optional[DataManager] = None,
+        enable_user_data : bool = False
     ) -> None:
         # self.ws is set in the connect method
         self.ws: DiscordWebSocket = None  # type: ignore
@@ -389,7 +405,11 @@ class Client:
         self._application_command_before_invoke: Optional[ApplicationHook] = None
         self._application_command_after_invoke: Optional[ApplicationHook] = None
         
-        #Setup Logger
+        # Data
+        self._dataManager = data_manager
+        self._enable_user_data = enable_user_data
+        
+        # Setup Logger
         if enable_logger_console:
             custom_theme = Theme({
             "logging.level.debug": f"{PreColour.debug}",
@@ -2224,6 +2244,9 @@ class Client:
         return [event for guild in self.guilds for event in guild.scheduled_events]
 
     async def on_interaction(self, interaction: Interaction) -> None:
+        if self._dataManager and self._enable_user_data and interaction.user:
+            userData = UserManager(interaction.user)
+            await userData.commandCount(interaction)
         await self.process_application_commands(interaction)
 
     async def process_application_commands(self, interaction: Interaction) -> None:
@@ -3113,3 +3136,14 @@ class Client:
 
         self._application_command_after_invoke = coro
         return coro
+
+    # Data Collector
+    
+    async def on_message(self, message: Message) -> None:
+        """Default message handler that tracks user data if enabled"""
+        if self._dataManager and self._enable_user_data and message.author:
+            try:
+                userData = UserManager(message.author) 
+                await userData.incrementMessageCount(message)
+            except Exception as e:
+                _log.error(f"Error tracking message data: {e}")

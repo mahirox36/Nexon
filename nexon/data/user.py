@@ -274,7 +274,6 @@ class UserData:
         )
 
 
-#TODO: add self.user
 class UserManager(DataManager):
     __slots__ = (
         "user_id",
@@ -291,6 +290,7 @@ class UserManager(DataManager):
         )
         self.user_id = user.id
         self._user_data: UserData = self._load_user_data()
+        self._user = user
         
     def _load_user_data(self) -> UserData:
         """Convert raw data to UserData object"""
@@ -316,17 +316,17 @@ class UserManager(DataManager):
         """Access the UserData object"""
         return self._user_data
     
-    def generalUpdateInfo(self, user: Union['Member', 'User']): #bruh u just add the user in the init why adding it here again?
-        if user.display_name == self.user_data.name:
+    def generalUpdateInfo(self):
+        if self._user.display_name == self.user_data.name:
             return
         else:
             self.user_data.unique_names.add(self.user_data.name)
-            self.user_data.name = user.display_name
+            self.user_data.name = self._user.display_name
             self.user_data.last_updated = datetime.now()
             return self.save()
     
     async def incrementMessageCount(self, message: Message):
-        self.generalUpdateInfo(message.author)
+        self.generalUpdateInfo()
         # await self.BadgeDetect(message)
         content = message.content
         self.user_data.total_messages += 1
@@ -371,20 +371,21 @@ class UserManager(DataManager):
         
         self.save()
     
-    #TODO: After u fix that fucking thing in the generalUpdateInfo uncomment this
-    # async def commandCount(self, ctx: 'Interaction'):
-    #     """Command track usage"""
-    #     if ctx.application_command is None:
-    #         return
-    #     if ctx.application_command.name is None:
-    #         return
-    #     self.generalUpdateInfo()
-    #     try:
-    #         command_name = ctx.application_command.name
-    #         self.increment_command_count(command_name)
-    #         # await cls.BadgeDetect(user_manager, ctx)
-    #     except:
-    #         pass
+    async def commandCount(self, interaction: 'Interaction'):
+        """Command track usage"""
+        if interaction.application_command is None:
+            return
+        if interaction.application_command.name is None:
+            return
+        self.generalUpdateInfo()
+        try:
+            command_name = interaction.application_command.name
+            self.increment_command_count(command_name)
+            # await cls.BadgeDetect(user_manager, interaction)
+        except:
+            pass
+        finally:
+            self.save()
     
     def increment_command_count(self, command_name: str) -> None:
         """Increment the command usage count"""
