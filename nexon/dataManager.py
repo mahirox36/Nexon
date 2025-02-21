@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 from collections import OrderedDict
 from time import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, NoReturn, Optional, Union
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -70,7 +70,9 @@ class DataManager:
         entity_type: str = "Features",
         add_name_folder: bool = True,
     ) -> None:
-        
+        if not name:
+            raise ValueError("Name cannot be empty")
+        name = "".join(c if c.isalnum() or c in ('-', '_') else '_' for c in name)
         base_path = Path("Data")
         entity_type = "Guilds" if server_id is not None else entity_type
         
@@ -87,6 +89,7 @@ class DataManager:
         self.default = default if default is not None else {}
         self.data = self.default
         self.auto_save = auto_save
+        self._saved = False
         
         self.load()
 
@@ -137,7 +140,10 @@ class DataManager:
             If the key doesn't exist in the data.
         """
         if isinstance(self.data, dict):
-            return self.data[key]
+            data = self.get(key, NoReturn)
+            if data is NoReturn:
+                raise KeyError(key)
+            return data
         raise TypeError("Data is not a dictionary")
 
     def __setitem__(self, key: str, value: Any) -> None:
@@ -156,7 +162,7 @@ class DataManager:
             If the underlying data is not a dictionary.
         """
         if isinstance(self.data, dict):
-            self.data[key] = value
+            self.set(key, value)
         else:
             raise TypeError("Data is not a dictionary")
             
@@ -182,6 +188,7 @@ class DataManager:
         self.path.mkdir(parents=True, exist_ok=True)
         with open(self.file, "w", encoding='utf-8') as f:
             json.dump(self.data, f, indent=4, ensure_ascii=False)
+        self._saved = True
         
         # Update cache after saving
         cache_key = str(self.file)
@@ -200,16 +207,18 @@ class DataManager:
             The loaded data or default structure.
         """
         cache_key = str(self.file)
+    
+        # Check cache first with proper validation
         if cache_key in self._cache:
-            # Refresh timestamp for LRU policy
-            self._cache_timestamps[cache_key] = time()
-            return self._cache[cache_key]
+            self._cache_timestamps[cache_key] = time()  # Update timestamp
+            self.data = self._cache[cache_key]  # Make sure to update self.data
+            return self.data
 
         # Load from file if not in cache
         try:
             with open(self.file, "r", encoding='utf-8') as f:
                 self.data = json.load(f)
-                # Cache the loaded data
+                # Update cache properly
                 self._cache[cache_key] = self.data
                 self._cache_timestamps[cache_key] = time()
                 self._clean_cache()
@@ -231,41 +240,38 @@ class DataManager:
         TypeError
             If the key is provided and the data structure is not compatible.
         """
-        cache_key = str(self.file)
+        # cache_key = str(self.file)
     
         if key is not None:
             if isinstance(self.data, dict):
                 if key in self.data:
                     del self.data[key]
-                    # Update cache and save
-                    self._cache[cache_key] = self.data
-                    self._cache_timestamps[cache_key] = time()
-                    self._clean_cache()
+                    # self._cache[cache_key] = self.data
+                    # self._cache_timestamps[cache_key] = time()
+                    # self._clean_cache()
                     self.save()
                 else:
                     raise KeyError(f"Key '{key}' not found in data")
             elif isinstance(self.data, list):
-                if key in self.data:  # This is the key fix - check if item exists
+                if key in self.data:
                     self.data.remove(key)
-                    # Update cache and save
-                    self._cache[cache_key] = self.data
-                    self._cache_timestamps[cache_key] = time()
-                    self._clean_cache()
+                    # self._cache[cache_key] = self.data
+                    # self._cache_timestamps[cache_key] = time()
+                    # self._clean_cache()
                     self.save()
                 else:
                     raise ValueError(f"Item '{key}' not found in list")
             else:
                 raise TypeError("Data is neither a dictionary nor a list")
         else:
-            # If no key is provided, delete the entire file
             if self.file.exists():
                 self.file.unlink()
             if not any(self.path.iterdir()):
                 shutil.rmtree(self.path)
             
             # Remove from the cache when the file is deleted
-            self._cache.pop(cache_key, None)
-            self._cache_timestamps.pop(cache_key, None)
+            # self._cache.pop(cache_key, None)
+            # self._cache_timestamps.pop(cache_key, None)
 
     def get(self, key: Any, default: Any = None) -> Any:
         """Get value from data with optional default.
@@ -305,10 +311,10 @@ class DataManager:
         """
         if isinstance(self.data, dict):
             self.data[key] = value
-            cache_key = str(self.file)
-            self._cache[cache_key] = self.data
-            self._cache_timestamps[cache_key] = time()
-            self._clean_cache()
+            # cache_key = str(self.file)
+            # self._cache[cache_key] = self.data
+            # self._cache_timestamps[cache_key] = time()
+            # self._clean_cache()
             if self.auto_save:
                 self.save()
         else:
@@ -329,10 +335,10 @@ class DataManager:
         """
         if isinstance(self.data, dict):
             self.data.update(data)
-            cache_key = str(self.file)
-            self._cache[cache_key] = self.data
-            self._cache_timestamps[cache_key] = time()
-            self._clean_cache()
+            # cache_key = str(self.file)
+            # self._cache[cache_key] = self.data
+            # self._cache_timestamps[cache_key] = time()
+            # self._clean_cache()
             if self.auto_save:
                 self.save()
         else:
@@ -354,9 +360,9 @@ class DataManager:
         if isinstance(self.data, list):
             self.data.append(item)
             # Update cache
-            cache_key = str(self.file)
-            self._cache[cache_key] = self.data
-            self._cache_timestamps[cache_key] = time()
+            # cache_key = str(self.file)
+            # self._cache[cache_key] = self.data
+            # self._cache_timestamps[cache_key] = time()
             self._clean_cache()
         else:
             raise TypeError("Data is not a list")
