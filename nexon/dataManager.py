@@ -1,4 +1,12 @@
-# SPDX-License-Identifier: MIT
+"""
+nexon.dataManager
+~~~~~~~~~~~~~~~~
+
+A unified data management system for handling JSON data storage.
+
+:copyright: (c) 2024 Mahirox36
+:license: MIT, see LICENSE for more details.
+"""
 
 from __future__ import annotations
 
@@ -18,39 +26,41 @@ __all__ = (
 
 
 class DataManager:
-    """Represents a unified data management system for handling JSON data storage with enhanced features.
+    """A unified data management system for handling JSON data storage with enhanced features.
 
-    This class handles persistence of structured data with a focus on Discord bot-related organization patterns.
+    This class provides persistent storage of structured data with focus on Discord bot-related patterns.
+
+    .. versionadded:: Nexon 0.2.1
 
     Parameters
-    ----------
+    -----------
     name: :class:`str`
-        The name of the data store.
+        The name of the data store
     server_id: Optional[:class:`int`]
-        Server ID for guild-specific data. If provided, data will be stored in the Guilds directory.
-    file: :class:`str`
-        Name of the JSON file without extension. Defaults to "data".
+        Server ID for guild-specific data. If provided, data will be stored in the Guilds directory
+    file_name: :class:`str`
+        Name of the JSON file without extension. Defaults to "data"
     subfolder: Optional[:class:`str`]
-        Optional subfolder path within the entity type folder.
-    default: Union[:class:`Dict`, :class:`List`, ``None``]
-        Default data structure if no existing data is found.
+        Optional subfolder path within the entity type folder
+    default: Union[:class:`dict`, :class:`list`, ``None``]
+        Default data structure if no existing data is found
     auto_save: :class:`bool`
-        Whether to automatically save on context exit.
-    entity_type: :class:`str`
-        Type of entity the data belongs to. Defaults to "Features".
+        Whether to automatically save on context exit
+    entity_type: :class:`str` 
+        Type of entity the data belongs to. Defaults to "Features"
     add_name_folder: :class:`bool`
-        Whether to include name as a subfolder in the path.
+        Whether to include name as a subfolder in the path
 
     Attributes
-    ----------
-    path: :class:`Path`
-        The path to the directory containing the data file.
-    file: :class:`Path`
-        The full path to the JSON file.
-    data: Union[:class:`Dict`, :class:`List`, Any]
-        The loaded data structure.
+    -----------
+    path: :class:`pathlib.Path`
+        The path to the directory containing the data file
+    file: :class:`pathlib.Path`
+        The full path to the JSON file
+    data: Union[:class:`dict`, :class:`list`, Any]
+        The loaded data structure
     auto_save: :class:`bool`
-        Whether auto-save is enabled for this instance.
+        Whether auto-save is enabled for this instance
     """
     
     _cache: Dict[str, Any] = {}
