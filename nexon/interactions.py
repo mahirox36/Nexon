@@ -1145,8 +1145,8 @@ class InteractionResponse:
     
     async def send_info(
         self,
-        description: str,
-        title: str = "Info",
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Info",
         footer: str = MISSING,
         author: List[Union[str, str]] = MISSING,
         timestamp: Optional[datetime] = None,
@@ -1186,19 +1186,12 @@ class InteractionResponse:
         :class:`InteractionMessage`
             The message that was sent.
         """
-        embed = Embed(
-            title= title,
-            description=description,
-            timestamp=timestamp,
-            colour=PreColour.info)
-        if footer: embed.set_footer(text=footer)
-        if author != MISSING: embed.set_author(name=author[0], url=author[1])
-        return await self.send_message(embed=embed,ephemeral=ephemeral)
+        return await self.send_message(embed=Embed.Info(description=description, title=title, timestamp=timestamp, footer=footer, author=author),ephemeral=ephemeral)
 
     async def send_warn(
         self,
-        description: str,
-        title: str = "Warning",
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Warning",
         footer: str = MISSING,
         author: List[Union[str, str]] = MISSING,
         timestamp: Optional[datetime] = None,
@@ -1238,19 +1231,12 @@ class InteractionResponse:
         :class:`InteractionMessage`
             The message that was sent.
         """
-        embed = Embed(
-            title= title,
-            description=description,
-            timestamp=timestamp,
-            colour=PreColour.warn)
-        if footer: embed.set_footer(text=footer)
-        if author != MISSING: embed.set_author(name=author[0], url=author[1])
-        return await self.send_message(embed=embed,ephemeral=ephemeral)
+        return await self.send_message(embed=Embed.Warning(description=description, title=title, timestamp=timestamp, footer=footer, author=author),ephemeral=ephemeral)
     
     async def send_error(
         self,
-        description: str,
-        title: str = "Error",
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Error",
         footer: str = MISSING,
         author: List[Union[str, str]] = MISSING,
         timestamp: Optional[datetime] = None,
@@ -1290,19 +1276,12 @@ class InteractionResponse:
         :class:`InteractionMessage`
             The message that was sent.
         """
-        embed = Embed(
-            title= title,
-            description=description,
-            timestamp=timestamp,
-            colour=PreColour.error)
-        if footer: embed.set_footer(text=footer)
-        if author != MISSING: embed.set_author(name=author[0], url=author[1])
-        return await self.send_message(embed=embed,ephemeral=ephemeral)
+        return await self.send_message(embed=Embed.Error(description=description, title=title, timestamp=timestamp, footer=footer, author=author),ephemeral=ephemeral)
     
     async def send_debug(
         self,
-        description: str,
-        title: str = "Debug",
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Debug",
         footer: str = MISSING,
         author: List[Union[str, str]] = MISSING,
         timestamp: Optional[datetime] = None,
@@ -1342,19 +1321,12 @@ class InteractionResponse:
         :class:`InteractionMessage`
             The message that was sent.
         """
-        embed = Embed(
-            title= title,
-            description=description,
-            timestamp=timestamp,
-            colour=PreColour.debug)
-        if footer: embed.set_footer(text=footer)
-        if author != MISSING: embed.set_author(name=author[0], url=author[1])
-        return await self.send_message(embed=embed,ephemeral=ephemeral)
+        return await self.send_message(embed=Embed.Debug(description=description, title=title, timestamp=timestamp, footer=footer, author=author),ephemeral=ephemeral)
     
     async def send_critical(
         self,
-        description: str,
-        title: str = "Critical",
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Critical",
         footer: str = MISSING,
         author: List[Union[str, str]] = MISSING,
         timestamp: Optional[datetime] = None,
@@ -1394,14 +1366,7 @@ class InteractionResponse:
         :class:`InteractionMessage`
             The message that was sent.
         """
-        embed = Embed(
-            title= title,
-            description=description,
-            timestamp=timestamp,
-            colour=PreColour.critical)
-        if footer: embed.set_footer(text=footer)
-        if author != MISSING: embed.set_author(name=author[0], url=author[1])
-        return await self.send_message(embed=embed,ephemeral=ephemeral)
+        return await self.send_message(embed=Embed.Critical(description=description, title=title, timestamp=timestamp, footer=footer, author=author),ephemeral=ephemeral)
 
     async def start_typing(self, time: int = 120) -> None:
         """|coro|

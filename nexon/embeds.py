@@ -7,7 +7,9 @@ import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Mapping, Optional, Protocol, Union
 
 from . import utils
-from .colour import Colour
+from .colour import Colour, PreColour
+
+MISSING: Any = utils.MISSING
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -718,3 +720,215 @@ class Embed:
             result["title"] = self.title
 
         return result  # type: ignore
+
+    @classmethod
+    def _build_embed(
+        cls,
+        description: Optional[str] = MISSING,
+        title: Optional[str] = MISSING,
+        colour: Optional[Colour] = MISSING,
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime.datetime] = None
+    ) -> Embed:
+        if description is MISSING and title in ["Info", "Error", "Warning", "Debug", "Critical"]:
+            raise ValueError("description must be provided if title is the D")
+        if description is MISSING and title is MISSING:
+            raise ValueError("description or title must be provided")
+        embed = Embed(
+            title=None if title is MISSING else title,
+            description=None if description is MISSING else description,
+            timestamp=timestamp,
+            colour=None if colour is MISSING else colour
+        )
+        if footer:
+            embed.set_footer(text=footer)
+        if author != MISSING:
+            embed.set_author(name=author[0], url=author[1])
+        return embed
+
+    @classmethod
+    def Info(
+        cls,
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Info",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime.datetime] = None) -> Embed:
+            """
+            A factory for creating an embed with a info theme.
+            
+            Parameters
+            ----------
+            description: str
+                The description of the embed.
+            title: str
+                The title of the embed.
+            footer: str
+                The footer of the embed.
+            author: List[Union[str, str]]
+                The author of the embed.
+            timestamp: Optional[datetime.datetime]
+                The timestamp of the embed.
+            
+            Returns
+            -------
+            Embed
+                The embed object.
+            """
+            return cls._build_embed(description, title, PreColour.info, footer, author, timestamp)
+    
+    @classmethod
+    def Warning(
+        cls,
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Warning",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime.datetime] = None) -> Embed:
+            """
+            A factory for creating an embed with a warning theme.
+            
+            Parameters
+            ----------
+            description: str
+                The description of the embed.
+            title: str
+                The title of the embed.
+            footer: str
+                The footer of the embed.
+            author: List[Union[str, str]]
+                The author of the embed.
+            timestamp: Optional[datetime.datetime]
+                The timestamp of the embed.
+            
+            Returns
+            -------
+            Embed
+                The embed object.
+            """
+            return cls._build_embed(description, title, PreColour.warn, footer, author, timestamp)
+    
+    @classmethod
+    def Warn(
+        cls,
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Warning",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime.datetime] = None) -> Embed:
+            """
+            A factory for creating an embed with a warning theme.
+            
+            Parameters
+            ----------
+            description: str
+                The description of the embed.
+            title: str
+                The title of the embed.
+            footer: str
+                The footer of the embed.
+            author: List[Union[str, str]]
+                The author of the embed.
+            timestamp: Optional[datetime.datetime]
+                The timestamp of the embed.
+            
+            Returns
+            -------
+            Embed
+                The embed object.
+            """
+            return cls._build_embed(description, title, PreColour.warn, footer, author, timestamp)
+    
+    @classmethod
+    def Error(
+        cls,
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Error",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime.datetime] = None) -> Embed:
+            """
+            A factory for creating an embed with a error theme.
+            
+            Parameters
+            ----------
+            description: str
+                The description of the embed.
+            title: str
+                The title of the embed.
+            footer: str
+                The footer of the embed.
+            author: List[Union[str, str]]
+                The author of the embed.
+            timestamp: Optional[datetime.datetime]
+                The timestamp of the embed.
+            
+            Returns
+            -------
+            Embed
+                The embed object.
+            """
+            return cls._build_embed(description, title, PreColour.error, footer, author, timestamp)
+        
+    @classmethod
+    def Critical(
+        cls,
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Critical",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime.datetime] = None) -> Embed:
+            """
+            A factory for creating an embed with a critical theme.
+            
+            Parameters
+            ----------
+            description: str
+                The description of the embed.
+            title: str
+                The title of the embed.
+            footer: str
+                The footer of the embed.
+            author: List[Union[str, str]]
+                The author of the embed.
+            timestamp: Optional[datetime.datetime]
+                The timestamp of the embed.
+            
+            Returns
+            -------
+            Embed
+                The embed object.
+            """
+            return cls._build_embed(description, title, PreColour.critical, footer, author, timestamp)
+        
+    @classmethod
+    def Debug(
+        cls,
+        description: Optional[str] = MISSING,
+        title: Optional[str] = "Debug",
+        footer: str = MISSING,
+        author: List[Union[str, str]] = MISSING,
+        timestamp: Optional[datetime.datetime] = None) -> Embed:
+            """
+            A factory for creating an embed with a debug theme.
+            
+            Parameters
+            ----------
+            description: str
+                The description of the embed.
+            title: str
+                The title of the embed.
+            footer: str
+                The footer of the embed.
+            author: List[Union[str, str]]
+                The author of the embed.
+            timestamp: Optional[datetime.datetime]
+                The timestamp of the embed.
+            
+            Returns
+            -------
+            Embed
+                The embed object.
+            """
+            return cls._build_embed(description, title, PreColour.debug, footer, author, timestamp)
