@@ -42,6 +42,8 @@ from typing import (
     overload,
 )
 
+import emoji
+
 from .enums import IntegrationType
 from .errors import InvalidArgument
 from .file import File
@@ -88,6 +90,7 @@ __all__ = (
     "format_dt",
     "format_ts",
     "cached_property",
+    "extract_emojis",
 )
 
 DISCORD_EPOCH = 1420070400000
@@ -1263,3 +1266,15 @@ def parse_docstring(func: Callable[..., Any], max_chars: int = MISSING) -> Dict[
             args[arg.group("name")] = arg_description
 
     return {"description": description, "args": args}
+
+def extract_emojis(text: str) -> List[str]:
+    """
+    Extract all emojis from a string.
+    
+    Args:
+        text: The input string to extract emojis from
+        
+    Returns:
+        A list of all emoji characters found in the string
+    """
+    return [char for char in text if char in emoji.EMOJI_DATA]
