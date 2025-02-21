@@ -8,6 +8,11 @@ import logging
 import signal
 import sys
 import traceback
+
+from rich.logging import RichHandler
+from rich.console import Console
+from rich.theme import Theme
+
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -31,6 +36,7 @@ from typing import (
 
 import aiohttp
 
+
 from . import utils
 from .activity import ActivityTypes, BaseActivity, create_activity
 from .appinfo import AppInfo
@@ -42,6 +48,7 @@ from .application_command import (
 )
 from .backoff import ExponentialBackoff
 from .channel import PartialMessageable, _threaded_channel_factory
+from .colour import PreColour
 from .emoji import Emoji
 from .enums import (
     ApplicationCommandType,
@@ -268,6 +275,18 @@ class Client:
         Defaults to ``None``.
 
         .. versionadded:: 2.3
+    
+    enable_logger_console: :class:`bool`
+        Whether to enable logging to the console. and to get the logger use `logging.getLogger("bot")`
+        Defaults to ``False``
+    
+        .. versionadded:: Nexon 0.1.2
+    
+    logger_level: :class:`int`
+        The logging level to use.
+        Defaults to ``logging.INFO``
+    
+        .. versionadded:: Nexon 0.1.2
 
     Attributes
     ----------
@@ -305,6 +324,8 @@ class Client:
         rollout_update_known: bool = True,
         rollout_all_guilds: bool = False,
         default_guild_ids: Optional[List[int]] = None,
+        enable_logger_console: bool = True,
+        logger_level: int = logging.INFO,
     ) -> None:
         # self.ws is set in the connect method
         self.ws: DiscordWebSocket = None  # type: ignore
@@ -367,6 +388,31 @@ class Client:
         self._application_command_checks: List[ApplicationCheck] = []
         self._application_command_before_invoke: Optional[ApplicationHook] = None
         self._application_command_after_invoke: Optional[ApplicationHook] = None
+        
+        #Setup Logger
+        if enable_logger_console:
+            custom_theme = Theme({
+            "logging.level.debug": f"{PreColour.debug}",
+            "logging.level.info": f"{PreColour.info}",
+            "logging.level.warning": f"{PreColour.warn}",
+            "logging.level.error": f"{PreColour.error}",
+            "logging.level.critical": f"{PreColour.critical} bold",
+        })
+            console = Console(theme=custom_theme, force_terminal=True)
+            
+            rich_handler = RichHandler(
+                console=console,
+                markup=True,
+                rich_tracebacks=True,
+                level=logger_level,
+            )
+            for name in [__name__, "bot"]:
+                logger = logging.getLogger(name)
+                logger.setLevel(logger_level)
+                logger.handlers.clear()
+
+                logger.addHandler(rich_handler)
+                logger.propagate = False
 
         if VoiceClient.warn_nacl:
             VoiceClient.warn_nacl = False

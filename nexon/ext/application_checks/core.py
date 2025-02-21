@@ -35,6 +35,8 @@ from .errors import (
 if TYPE_CHECKING:
     from nexon.types.checks import ApplicationCheck, CoroFunc
 
+#TODO: add is_guild_owner
+
 cooldowns= {}
 __all__ = (
     "check",
