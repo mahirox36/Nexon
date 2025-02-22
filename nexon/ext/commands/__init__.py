@@ -6,6 +6,7 @@ An extension module to facilitate creation of bot commands.
 
 :copyright: (c) 2015-2021 Rapptz
 :copyright: (c) 2021-present Nextcord Developers
+:copyright: (c) 2025 MahiroX36
 :license: MIT, see LICENSE for more details.
 """
 

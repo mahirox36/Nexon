@@ -9,6 +9,7 @@ import contextlib
 import copy
 import importlib.util
 import inspect
+import logging
 import os
 import sys
 import traceback
@@ -50,6 +51,7 @@ if TYPE_CHECKING:
     from nexon.flags import MemberCacheFlags
     from nexon.mentions import AllowedMentions
     from nexon.message import Message
+    from nexon.dataManager import DataManager
 
     from ._types import Check, CoroFunc
 
@@ -1367,7 +1369,7 @@ class BotBase(GroupMixin):
     async def on_message(self, message) -> None:
         await self.process_commands(message)
 
-
+#TODO: Add enable_logger_console, logger_level, data_manager, enable_user_data
 class Bot(BotBase, nexon.Client):
     """Represents a discord bot.
 
@@ -1436,6 +1438,30 @@ class Bot(BotBase, nexon.Client):
         the ``command_prefix`` is set to ``!``. Defaults to ``False``.
 
         .. versionadded:: 1.7
+        
+    enable_logger_console: :class:`bool`
+        Whether to enable logging to the console. and to get the logger use `logging.getLogger("bot")`
+        Defaults to ``False``
+    
+        .. versionadded:: Nexon 0.2.2
+    
+    logger_level: :class:`int`
+        The logging level to use.
+        Defaults to ``logging.INFO``
+    
+        .. versionadded:: Nexon 0.2.2
+    
+    data_manager: Optional[:class:`DataManager`]
+        The data manager to use for saving and loading data.
+        Defaults to ``None``
+        
+        .. versionadded:: Nexon 0.2.2
+    
+    enable_user_data: :class:`bool`
+        Whether to enable user data saving and loading.
+        Defaults to ``False``
+    
+        .. versionadded:: Nexon 0.2.2
     """
 
     def __init__(
@@ -1479,6 +1505,10 @@ class Bot(BotBase, nexon.Client):
         owner_ids: Optional[Iterable[int]] = None,
         strip_after_prefix: bool = False,
         case_insensitive: bool = False,
+        enable_logger_console: bool = True,
+        logger_level: int = logging.INFO,
+        data_manager: Optional['DataManager'] = None,
+        enable_user_data: bool = False,
     ) -> None:
         nexon.Client.__init__(
             self,
@@ -1507,6 +1537,11 @@ class Bot(BotBase, nexon.Client):
             rollout_update_known=rollout_update_known,
             rollout_all_guilds=rollout_all_guilds,
             default_guild_ids=default_guild_ids,
+            enable_logger_console=enable_logger_console,
+            logger_level=logger_level,
+            enable_user_data=enable_user_data,
+            data_manager= data_manager
+,
         )
 
         BotBase.__init__(
