@@ -325,6 +325,32 @@ class UserManager(DataManager):
             self.user_data.last_updated = datetime.now()
             return self.save()
     
+    def increase_given_reaction(self):
+        self.user_data.reactions_given += 1
+        self.save()
+    
+    def increase_received_reaction(self):
+        self.user_data.reactions_received += 1
+        self.save()
+    
+    def increase_deleted_message(self):
+        self.user_data.deleted_messages += 1
+        self.save()
+    def increase_edited_message(self):
+        self.user_data.edited_messages += 1
+        self.save()
+    
+    def set_birthdate(self, date: datetime | str):
+        """Set the user's birthdate
+
+        Args:
+            date (datetime | str): The user's birthdate as a datetime object or a string in year/month/day format
+        """
+        if isinstance(date, str):
+            date = datetime.strptime(date, "%Y/%m/%d")
+        self.user_data.birthdate = date
+        self.save()
+    
     async def incrementMessageCount(self, message: Message):
         self.generalUpdateInfo()
         # await self.BadgeDetect(message)
@@ -407,7 +433,7 @@ class BotManager(UserManager):
         self._user_data: BotStatistics = self._load_user_data()
     
     def _load_user_data(self) -> BotStatistics:
-        """Convert raw data to UserData object"""
+        """Convert raw data to BotStatistics object"""
         return BotStatistics.from_dict(self.data)
     
     @property
@@ -417,21 +443,18 @@ class BotManager(UserManager):
     
     def record_bot_message(self):
         """Record a message sent by the bot"""
-        self.init_bot_stats()
         self.user_data.messages_sent += 1
         self.save()
 
     def record_command_processed(self, command_name: str):
         """Record a processed command"""
-        self.init_bot_stats()
         self.user_data.commands_processed += 1
-        self.user_dat.features_used[command_name] = \
+        self.user_data.features_used[command_name] = \
             self.user_data.features_used.get(command_name, 0) + 1
         self.save()
 
     def record_error(self, command_name: str, error_message: str):
         """Record an error that occurred"""
-        self.init_bot_stats()
         self.user_data.errors_encountered += 1
         if command_name not in self.user_data.command_errors:
             self.user_data.command_errors[command_name] = []

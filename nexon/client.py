@@ -101,6 +101,7 @@ if TYPE_CHECKING:
     from .types.checks import CoroFunc
     from .types.interactions import ApplicationCommand as ApplicationCommandPayload
     from .voice_client import VoiceProtocol
+    from .reaction import Reaction
 
 __all__ = ("Client",)
 
@@ -290,17 +291,11 @@ class Client:
     
         .. versionadded:: Nexon 0.1.2
     
-    data_manager: Optional[:class:`DataManager`]
-        The data manager to use for saving and loading data.
-        Defaults to ``None``
-        
-        .. versionadded:: Nexon 0.1.2
-    
     enable_user_data: :class:`bool`
         Whether to enable user data saving and loading.
         Defaults to ``False``
     
-        .. versionadded:: Nexon 0.1.2
+        .. versionadded:: Nexon 0.2.1
 
     Attributes
     ----------
@@ -340,7 +335,6 @@ class Client:
         default_guild_ids: Optional[List[int]] = None,
         enable_logger_console: bool = True,
         logger_level: int = logging.INFO,
-        data_manager: Optional[DataManager] = None,
         enable_user_data : bool = False
     ) -> None:
         # self.ws is set in the connect method
@@ -406,7 +400,6 @@ class Client:
         self._application_command_after_invoke: Optional[ApplicationHook] = None
         
         # Data
-        self._dataManager = data_manager
         self._enable_user_data = enable_user_data
         
         # Setup Logger
@@ -433,6 +426,9 @@ class Client:
 
                 logger.addHandler(rich_handler)
                 logger.propagate = False
+            
+        if enable_user_data:
+            self._add_data_collection()
 
         if VoiceClient.warn_nacl:
             VoiceClient.warn_nacl = False
@@ -2244,7 +2240,7 @@ class Client:
         return [event for guild in self.guilds for event in guild.scheduled_events]
 
     async def on_interaction(self, interaction: Interaction) -> None:
-        if self._dataManager and self._enable_user_data and interaction.user:
+        if self._enable_user_data and interaction.user:
             userData = UserManager(interaction.user)
             await userData.commandCount(interaction)
         await self.process_application_commands(interaction)
@@ -3137,13 +3133,52 @@ class Client:
         self._application_command_after_invoke = coro
         return coro
 
-    # Data Collector
-    
-    async def on_message(self, message: Message) -> None:
-        """Default message handler that tracks user data if enabled"""
-        if self._dataManager and self._enable_user_data and message.author:
+    # Data Collection
+    def _add_data_collection(self) -> None:
+        """Add Data Collection listeners function to the client."""
+        
+        @self.listen()
+        async def on_message(self, message: 'Message') -> None:
+            """Default message handler that tracks user data if enabled"""
+            if message.author.bot:
+                return
             try:
                 userData = UserManager(message.author) 
                 await userData.incrementMessageCount(message)
             except Exception as e:
                 _log.error(f"Error tracking message data: {e}")
+        
+        @self.listen()
+        async def on_reaction_add(self, reaction: 'Reaction', user: Member | User) -> None:
+            """Default reaction handler that tracks user data if enabled"""
+            if user.bot:
+                return
+            try:
+                userData = UserManager(user) 
+                receiverUserData = UserManager(reaction.message.author)
+                userData.increase_given_reaction()
+                receiverUserData.increase_received_reaction()
+            except Exception as e:
+                _log.error(f"Error tracking reaction data: {e}")
+        
+        @self.listen()
+        async def on_message_delete(self, message: 'Message') -> None:
+            """Default message delete handler that tracks user data if enabled"""
+            if message.author.bot:
+                return
+            try:
+                userData = UserManager(message.author) 
+                userData.increase_deleted_message()
+            except Exception as e:
+                _log.error(f"Error tracking message delete data: {e}")
+                
+        @self.listen()
+        async def on_message_edit(self, before: 'Message', after: 'Message') -> None:
+            """Default message edit handler that tracks user data if enabled"""
+            if after.author.bot:
+                return
+            try:
+                userData = UserManager(after.author) 
+                userData.increase_edited_message()
+            except Exception as e:
+                _log.error(f"Error tracking message edit data: {e}")

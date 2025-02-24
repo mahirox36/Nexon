@@ -1451,12 +1451,6 @@ class Bot(BotBase, nexon.Client):
     
         .. versionadded:: Nexon 0.2.2
     
-    data_manager: Optional[:class:`DataManager`]
-        The data manager to use for saving and loading data.
-        Defaults to ``None``
-        
-        .. versionadded:: Nexon 0.2.2
-    
     enable_user_data: :class:`bool`
         Whether to enable user data saving and loading.
         Defaults to ``False``
@@ -1507,7 +1501,6 @@ class Bot(BotBase, nexon.Client):
         case_insensitive: bool = False,
         enable_logger_console: bool = True,
         logger_level: int = logging.INFO,
-        data_manager: Optional['DataManager'] = None,
         enable_user_data: bool = False,
     ) -> None:
         nexon.Client.__init__(
@@ -1539,8 +1532,7 @@ class Bot(BotBase, nexon.Client):
             default_guild_ids=default_guild_ids,
             enable_logger_console=enable_logger_console,
             logger_level=logger_level,
-            enable_user_data=enable_user_data,
-            data_manager= data_manager
+            enable_user_data=enable_user_data
 ,
         )
 
