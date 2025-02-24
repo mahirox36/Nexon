@@ -1,3 +1,13 @@
+"""
+nexon.data.user
+~~~~~~~~~~~~~~
+
+Represents Discord users with statistical data tracking.
+
+:copyright: (c) 2025 Mahirox36
+:license: MIT, see LICENSE for more details.
+"""
+
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Set, Optional, Type, Union, TYPE_CHECKING
 import re
@@ -14,6 +24,10 @@ if TYPE_CHECKING:
 
 @dataclass
 class AttachmentTypes:
+    """Tracks statistics about different types of attachments sent by users.
+    
+    .. versionadded:: Nexon 0.2.3
+    """
     images: int = 0
     videos: int = 0
     audio: int = 0
@@ -30,6 +44,10 @@ class AttachmentTypes:
 
 @dataclass
 class BotStatistics:
+    """Tracks usage statistics for bot instances.
+    
+    .. versionadded:: Nexon 0.2.3
+    """
     joined_at: str
     messages_sent: int = 0
     commands_processed: int = 0
@@ -52,8 +70,12 @@ class BotStatistics:
             joined_at=str(member.created_at)
         )
 
-@dataclass
+@dataclass  
 class UserData:
+    """Stores comprehensive statistics and data about a Discord user.
+    
+    .. versionadded:: Nexon 0.2.3
+    """
     # Basic Info
     name: str 
     joined_at: str
@@ -64,6 +86,7 @@ class UserData:
     total_messages: int = 0
     character_count: int = 0
     word_count: int = 0
+    last_message: Optional[datetime] = None
     
     # Content Analysis
     attachments_sent: int = 0
@@ -182,6 +205,7 @@ class UserData:
             'birthdate': None,
             'joined_at': str(datetime.now()),
             'last_updated': datetime.now(),
+            'last_message': datetime.now(),
             'unique_users_mentioned': set(),
             'unique_emojis_used': set(),
             'unique_custom_emojis_used': set(),
@@ -195,7 +219,7 @@ class UserData:
         }
 
         # Process datetime fields
-        for field in ['birthdate', 'last_updated']:
+        for field in ['birthdate', 'last_updated', "last_message"]:
             if isinstance(data.get(field), str):
                 try:
                     data[field] = datetime.fromisoformat(data[field])
@@ -257,6 +281,7 @@ class UserData:
             "total_messages": self.total_messages,
             "character_count": self.character_count,
             "word_count": self.word_count,
+            "last_message": self.last_message.isoformat() if self.last_message else None,
             
             # Content Analysis
             "attachments_sent": self.attachments_sent,
@@ -306,11 +331,32 @@ class UserData:
         return cls(
             name=member.display_name,
             joined_at=str(member.created_at),
-            last_updated=datetime.now()
+            last_updated=datetime.now(),
+            last_message=datetime.now()
         )
 
 
 class UserManager(DataManager):
+    """Manages persistent storage and operations for user data.
+    
+    .. versionadded:: Nexon 0.2.3
+    
+    Parameters
+    ----------
+    user: Union[:class:`Member`, :class:`User`]
+        The Discord user to manage data for
+    defaultClass: Type[:class:`UserData` | :class:`BotStatistics`]
+        The data class to use, defaults to UserData
+        
+    Attributes
+    ----------
+    user_id: :class:`int`
+        Discord user ID
+    user_data: :class:`UserData` | :class:`BotStatistics`
+        The user's data instance
+    _user: Union[:class:`Member`, :class:`User`]
+        Reference to Discord user object
+    """
     __slots__ = (
         "user_id",
         "_user_data",
@@ -383,6 +429,7 @@ class UserManager(DataManager):
             return
             
         self.generalUpdateInfo()
+        self._user_data.last_message = datetime.now()
         # await self.BadgeDetect(message)
         content = message.content
         self._user_data.total_messages += 1
@@ -495,6 +542,15 @@ class UserManager(DataManager):
         self.save()
     
 class BotManager(UserManager):
+    """Manages persistent storage and operations for bot statistics.
+    
+    .. versionadded:: Nexon 0.2.3
+    
+    Parameters
+    ----------
+    user: Union[:class:`Member`, :class:`User`]
+        The bot user to manage stats for
+    """
     def __init__(self, user: Union['Member', 'User']):
         super().__init__(user=user, defaultClass=BotStatistics)
 
