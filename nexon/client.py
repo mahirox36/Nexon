@@ -3133,12 +3133,24 @@ class Client:
         self._application_command_after_invoke = coro
         return coro
 
+    def print_error(self, error: Exception) -> None:
+        """Prints an error using rich's pretty printing.
+        
+        Parameters
+        ----------
+        error: Exception
+            The error to print
+        """
+        console = Console(force_terminal=True)
+        _log.error(f"{type(error).__name__}: {str(error)}")
+        console.print_exception(show_locals=True)
+
     # Data Collection
     def _add_data_collection(self) -> None:
         """Add Data Collection listeners function to the client."""
         
         @self.listen()
-        async def on_message(self, message: 'Message') -> None:
+        async def on_message(message: 'Message') -> None:
             """Default message handler that tracks user data if enabled"""
             if message.author.bot:
                 return
@@ -3146,10 +3158,10 @@ class Client:
                 userData = UserManager(message.author) 
                 await userData.incrementMessageCount(message)
             except Exception as e:
-                _log.error(f"Error tracking message data: {e}")
+                self.print_error(e)
         
         @self.listen()
-        async def on_reaction_add(self, reaction: 'Reaction', user: Member | User) -> None:
+        async def on_reaction_add(reaction: 'Reaction', user: Member | User) -> None:
             """Default reaction handler that tracks user data if enabled"""
             if user.bot:
                 return
@@ -3159,10 +3171,10 @@ class Client:
                 userData.increase_given_reaction()
                 receiverUserData.increase_received_reaction()
             except Exception as e:
-                _log.error(f"Error tracking reaction data: {e}")
+                self.print_error(e)
         
         @self.listen()
-        async def on_message_delete(self, message: 'Message') -> None:
+        async def on_message_delete(message: 'Message') -> None:
             """Default message delete handler that tracks user data if enabled"""
             if message.author.bot:
                 return
@@ -3170,10 +3182,10 @@ class Client:
                 userData = UserManager(message.author) 
                 userData.increase_deleted_message()
             except Exception as e:
-                _log.error(f"Error tracking message delete data: {e}")
+                self.print_error(e)
                 
         @self.listen()
-        async def on_message_edit(self, before: 'Message', after: 'Message') -> None:
+        async def on_message_edit(before: 'Message', after: 'Message') -> None:
             """Default message edit handler that tracks user data if enabled"""
             if after.author.bot:
                 return
@@ -3181,4 +3193,4 @@ class Client:
                 userData = UserManager(after.author) 
                 userData.increase_edited_message()
             except Exception as e:
-                _log.error(f"Error tracking message edit data: {e}")
+                self.print_error(e)

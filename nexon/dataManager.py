@@ -96,12 +96,18 @@ class DataManager:
         
         self.path= base_path.joinpath(*path_parts)
         self.file = self.path / f"{file_name}.json"
-        self.default = default if default is not None else {}
-        self.data = self.default
+        self.default = self._deep_copy(default if default is not None else {})
+        self.data = self._deep_copy(self.default)
         self.auto_save = auto_save
         self._saved = False
         
         self.load()
+
+    def _deep_copy(self, data: Any) -> Any:
+        """Create a deep copy of data structure."""
+        if isinstance(data, (dict, list)):
+            return json.loads(json.dumps(data))
+        return data
 
     def _clean_cache(self) -> None:
         """Clean expired or excess cache entries."""
@@ -195,16 +201,26 @@ class DataManager:
         
         This method ensures the directory exists before writing the file.
         """
-        self.path.mkdir(parents=True, exist_ok=True)
-        with open(self.file, "w", encoding='utf-8') as f:
-            json.dump(self.data, f, indent=4, ensure_ascii=False)
-        self._saved = True
-        
-        # Update cache after saving
-        cache_key = str(self.file)
-        self._cache[cache_key] = self.data
-        self._cache_timestamps[cache_key] = time()
-        self._clean_cache()
+        try:
+            self.path.mkdir(parents=True, exist_ok=True)
+            
+            # Create a deep copy for both cache and file
+            data_copy = self._deep_copy(self.data)
+            
+            # Update cache
+            cache_key = str(self.file)
+            self._cache[cache_key] = data_copy
+            self._cache_timestamps[cache_key] = time()
+            
+            # Write to file
+            with open(self.file, "w", encoding='utf-8') as f:
+                json.dump(data_copy, f, indent=4, ensure_ascii=False)
+            self._saved = True
+            self._clean_cache()
+            
+        except Exception as e:
+            print(f"Error saving data: {e}")
+            raise
 
     def load(self) -> Union[Dict, List, Any]:
         """Load data from JSON file.
@@ -218,24 +234,34 @@ class DataManager:
         """
         cache_key = str(self.file)
     
-        # Check cache first with proper validation
+        # Check cache first
         if cache_key in self._cache:
-            self._cache_timestamps[cache_key] = time()  # Update timestamp
-            self.data = self._cache[cache_key]  # Make sure to update self.data
+            self.data = self._deep_copy(self._cache[cache_key])
+            self._cache_timestamps[cache_key] = time()
             return self.data
 
         # Load from file if not in cache
         try:
             with open(self.file, "r", encoding='utf-8') as f:
-                self.data = json.load(f)
-                # Update cache properly
-                self._cache[cache_key] = self.data
+                loaded_data = json.load(f)
+                self.data = self._deep_copy(loaded_data)
+                self._cache[cache_key] = self._deep_copy(loaded_data)
                 self._cache_timestamps[cache_key] = time()
                 self._clean_cache()
                 return self.data
         except FileNotFoundError:
-            self.data = self.default
-            return self.default
+            # If file doesn't exist, use default and save it
+            self.data = self._deep_copy(self.default)
+            self.save()  # Create the file with default data
+            return self.data
+        except json.JSONDecodeError:
+            # If file is corrupted, backup and use default
+            if self.file.exists():
+                backup_file = self.file.with_suffix('.json.bak')
+                self.file.rename(backup_file)
+            self.data = self._deep_copy(self.default)
+            self.save()
+            return self.data
 
     def delete(self, key: Optional[str] = None) -> None:
         """Delete data or a specific key.
@@ -250,24 +276,16 @@ class DataManager:
         TypeError
             If the key is provided and the data structure is not compatible.
         """
-        # cache_key = str(self.file)
-    
         if key is not None:
             if isinstance(self.data, dict):
                 if key in self.data:
                     del self.data[key]
-                    # self._cache[cache_key] = self.data
-                    # self._cache_timestamps[cache_key] = time()
-                    # self._clean_cache()
                     self.save()
                 else:
                     raise KeyError(f"Key '{key}' not found in data")
             elif isinstance(self.data, list):
                 if key in self.data:
                     self.data.remove(key)
-                    # self._cache[cache_key] = self.data
-                    # self._cache_timestamps[cache_key] = time()
-                    # self._clean_cache()
                     self.save()
                 else:
                     raise ValueError(f"Item '{key}' not found in list")
@@ -278,10 +296,6 @@ class DataManager:
                 self.file.unlink()
             if not any(self.path.iterdir()):
                 shutil.rmtree(self.path)
-            
-            # Remove from the cache when the file is deleted
-            # self._cache.pop(cache_key, None)
-            # self._cache_timestamps.pop(cache_key, None)
 
     def get(self, key: Any, default: Any = None) -> Any:
         """Get value from data with optional default.
@@ -321,10 +335,6 @@ class DataManager:
         """
         if isinstance(self.data, dict):
             self.data[key] = value
-            # cache_key = str(self.file)
-            # self._cache[cache_key] = self.data
-            # self._cache_timestamps[cache_key] = time()
-            # self._clean_cache()
             if self.auto_save:
                 self.save()
         else:
@@ -345,10 +355,6 @@ class DataManager:
         """
         if isinstance(self.data, dict):
             self.data.update(data)
-            # cache_key = str(self.file)
-            # self._cache[cache_key] = self.data
-            # self._cache_timestamps[cache_key] = time()
-            # self._clean_cache()
             if self.auto_save:
                 self.save()
         else:
@@ -369,10 +375,6 @@ class DataManager:
         """
         if isinstance(self.data, list):
             self.data.append(item)
-            # Update cache
-            # cache_key = str(self.file)
-            # self._cache[cache_key] = self.data
-            # self._cache_timestamps[cache_key] = time()
             self._clean_cache()
         else:
             raise TypeError("Data is not a list")

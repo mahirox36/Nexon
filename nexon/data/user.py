@@ -147,11 +147,40 @@ class UserData:
         # Extract and handle custom data separately
         custom_data = data.pop('custom_data', {})
 
+        # Define defaults and types for numeric fields
+        numeric_fields = {
+            'total_messages': 0,
+            'character_count': 0,
+            'word_count': 0,
+            'attachments_sent': 0,
+            'gif_sent': 0,
+            'mentions_count': 0,
+            'emoji_count': 0,
+            'custom_emoji_count': 0,
+            'replies_count': 0,
+            'reactions_received': 0,
+            'reactions_given': 0,
+            'commands_used': 0,
+            'links_shared': 0,
+            'edited_messages': 0,
+            'deleted_messages': 0,
+        }
+
+        # Ensure numeric fields are properly initialized
+        for field, default in numeric_fields.items():
+            if field in data:
+                try:
+                    data[field] = int(data[field])
+                except (TypeError, ValueError):
+                    data[field] = default
+            else:
+                data[field] = default
+
         # Define defaults for all fields
         defaults = {
             'name': "Unknown",
             'birthdate': None,
-            'joined_at': None,
+            'joined_at': str(datetime.now()),
             'last_updated': datetime.now(),
             'unique_users_mentioned': set(),
             'unique_emojis_used': set(),
@@ -161,7 +190,8 @@ class UserData:
             'badges': set(),
             'favorite_commands': {},
             'preferred_channels': {},
-            'attachment_types': AttachmentTypes()
+            'attachment_types': AttachmentTypes(),
+            **numeric_fields  # Include numeric defaults
         }
 
         # Process datetime fields
@@ -174,35 +204,41 @@ class UserData:
             elif field not in data:
                 data[field] = defaults[field]
 
-        # Process set fields
+        # Process set fields - preserve existing data
         set_fields = [
             'unique_users_mentioned', 'unique_emojis_used', 
             'unique_custom_emojis_used', 'unique_domains',
             'unique_names', 'badges'
         ]
         for field in set_fields:
-            try:
-                data[field] = set(data.get(field, []))
-            except (TypeError, ValueError):
+            if field in data:
+                try:
+                    if isinstance(data[field], (list, set)):
+                        data[field] = set(data[field])
+                    else:
+                        data[field] = set()
+                except (TypeError, ValueError):
+                    data[field] = set()
+            else:
                 data[field] = set()
 
-        # Process dictionary fields
-        dict_fields = ['favorite_commands', 'preferred_channels',]
+        # Process dictionary fields - preserve existing data
+        dict_fields = ['favorite_commands', 'preferred_channels']
         for field in dict_fields:
-            if not isinstance(data.get(field), dict):
-                data[field] = {}
+            if field not in data or not isinstance(data[field], dict):
+                data[field] = defaults[field]
 
-        # Handle complex objects
+        # Handle attachment types
         if 'attachment_types' in data:
             if isinstance(data['attachment_types'], dict):
-                try:
-                    data['attachment_types'] = AttachmentTypes.from_dict(data['attachment_types'])
-                except (ValueError, TypeError):
-                    data['attachment_types'] = AttachmentTypes()
+                data['attachment_types'] = AttachmentTypes.from_dict(data['attachment_types'])
             elif not isinstance(data['attachment_types'], AttachmentTypes):
                 data['attachment_types'] = AttachmentTypes()
         else:
             data['attachment_types'] = AttachmentTypes()
+
+        # Set version
+        data['version'] = data.get('version', 2)
 
         # Create instance with processed data
         instance = cls(**{k: data.get(k, v) for k, v in defaults.items()})
@@ -278,90 +314,84 @@ class UserManager(DataManager):
     __slots__ = (
         "user_id",
         "_user_data",
-        )
+        "_user"
+    )
+    
     def __init__(self, user: Union['Member', 'User'], defaultClass: Type[UserData | BotStatistics] = UserData):
-        self.data: Dict[str, Any] = {}
+        self._user = user
+        self.user_id = user.id
+        self._user_data = None  # Initialize as None first
+        
+        default_data = defaultClass.from_member(user).to_dict()
+        
         super().__init__(
             name="Users",
             file_name=str(user.id),
-            default=defaultClass.from_member(user).to_dict(),
+            default=default_data,
             entity_type="Users",
             add_name_folder=False
         )
-        self.user_id = user.id
-        self._user_data: UserData = self._load_user_data()
-        self._user = user
         
-    def _load_user_data(self) -> UserData:
-        """Convert raw data to UserData object"""
-        return UserData.from_dict(self.data)
+        # Now initialize user data
+        if isinstance(self.data, dict):
+            self._user_data = (BotStatistics.from_dict(self.data) 
+                             if issubclass(defaultClass, BotStatistics)
+                             else UserData.from_dict(self.data))
+        else:
+            self._user_data = defaultClass.from_member(user)
 
     def save(self) -> None:
         """Save UserData to JSON file"""
-        self.data = self._user_data.to_dict()
-        super().save()
+        if self._user_data is not None:
+            self.data = self._user_data.to_dict()
+            super().save()
     
-    def load(self) -> UserData:
+    def load(self) -> Union[UserData, BotStatistics]:
         """Load JSON file and return as UserData object"""
         super().load()
-        self._user_data = self._load_user_data()
-        return self._user_data
-    
+        if isinstance(self.data, dict):
+            self._user_data = (BotStatistics.from_dict(self.data) 
+                             if isinstance(self._user_data, BotStatistics)
+                             else UserData.from_dict(self.data))
+        return self._user_data # type: ignore
+
     def delete(self):
         """Deletes the user data"""
         return super().delete(None)
 
     @property
-    def user_data(self) -> UserData:
-        """Access the UserData object"""
-        return self._user_data
+    def user_data(self) -> Union[UserData, BotStatistics]:
+        """Access the UserData or BotStatistics object"""
+        return self._user_data # type: ignore
     
     def generalUpdateInfo(self):
-        if self._user.display_name == self.user_data.name:
+        """Only call this method for UserData instances"""
+        if not isinstance(self._user_data, UserData):
             return
-        else:
-            self.user_data.unique_names.add(self.user_data.name)
-            self.user_data.name = self._user.display_name
-            self.user_data.last_updated = datetime.now()
-            return self.save()
-    
-    def increase_given_reaction(self):
-        self.user_data.reactions_given += 1
+            
+        if self._user.display_name == self._user_data.name:
+            return
+            
+        self._user_data.unique_names.add(self._user_data.name)
+        self._user_data.name = self._user.display_name
+        self._user_data.last_updated = datetime.now()
         self.save()
-    
-    def increase_received_reaction(self):
-        self.user_data.reactions_received += 1
-        self.save()
-    
-    def increase_deleted_message(self):
-        self.user_data.deleted_messages += 1
-        self.save()
-    def increase_edited_message(self):
-        self.user_data.edited_messages += 1
-        self.save()
-    
-    def set_birthdate(self, date: datetime | str):
-        """Set the user's birthdate
 
-        Args:
-            date (datetime | str): The user's birthdate as a datetime object or a string in year/month/day format
-        """
-        if isinstance(date, str):
-            date = datetime.strptime(date, "%Y/%m/%d")
-        self.user_data.birthdate = date
-        self.save()
-    
     async def incrementMessageCount(self, message: Message):
+        """Only call this method for UserData instances"""
+        if not isinstance(self._user_data, UserData):
+            return
+            
         self.generalUpdateInfo()
         # await self.BadgeDetect(message)
         content = message.content
-        self.user_data.total_messages += 1
-        self.user_data.character_count += len(content.replace(" ", ""))
-        self.user_data.word_count += len(content.split())
-        self.user_data.preferred_channels[str(message.channel.id)] = \
-            self.user_data.preferred_channels.get(str(message.channel.id), 0) + 1
+        self._user_data.total_messages += 1
+        self._user_data.character_count += len(content.replace(" ", ""))
+        self._user_data.word_count += len(content.split())
+        self._user_data.preferred_channels[str(message.channel.id)] = \
+            self._user_data.preferred_channels.get(str(message.channel.id), 0) + 1
 
-        self.user_data.attachments_sent += len(message.attachments)
+        self._user_data.attachments_sent += len(message.attachments)
         if len(message.attachments) >= 1:
             for att in message.attachments:
                 if att.content_type and (
@@ -371,29 +401,29 @@ class UserManager(DataManager):
                 ):
                     media_type = att.content_type.split('/')[0]
                     if media_type == 'image':
-                        self.user_data.attachment_types.images += 1
+                        self._user_data.attachment_types.images += 1
                     elif media_type == 'video':
-                        self.user_data.attachment_types.videos += 1
+                        self._user_data.attachment_types.videos += 1
                     elif media_type == 'audio':
-                        self.user_data.attachment_types.audio += 1
+                        self._user_data.attachment_types.audio += 1
                 else:
-                    self.user_data.attachment_types.other += 1
+                    self._user_data.attachment_types.other += 1
         mentions = re.findall(r"<@(\d+)>", content)
-        self.user_data.mentions_count += len(mentions)
-        self.user_data.unique_users_mentioned.update(mentions)
+        self._user_data.mentions_count += len(mentions)
+        self._user_data.unique_users_mentioned.update(mentions)
         #<a:dddd:706660674780266536>
         emojis = extract_emojis(content)
-        self.user_data.emoji_count += len(emojis)
-        self.user_data.unique_emojis_used.update(emojis)
+        self._user_data.emoji_count += len(emojis)
+        self._user_data.unique_emojis_used.update(emojis)
         customEmojis = re.findall(r"<a?:[a-zA-Z0-9_]+:(\d+)>", content)
-        self.user_data.custom_emoji_count += len(customEmojis)
-        self.user_data.unique_custom_emojis_used.update(customEmojis)
-        self.user_data.replies_count += 1 if message.reference else 0
+        self._user_data.custom_emoji_count += len(customEmojis)
+        self._user_data.unique_custom_emojis_used.update(customEmojis)
+        self._user_data.replies_count += 1 if message.reference else 0
         links = re.findall(r"https?://(?:www\.)?([a-zA-Z0-9.-]+)", content)
-        self.user_data.links_shared += len(links)
-        self.user_data.unique_domains.update(links)
+        self._user_data.links_shared += len(links)
+        self._user_data.unique_domains.update(links)
         gifs = re.findall(r'https?://tenor\.com/\S+', content)
-        self.user_data.gif_sent += len(gifs)
+        self._user_data.gif_sent += len(gifs)
         
         self.save()
     
@@ -415,48 +445,84 @@ class UserManager(DataManager):
     
     def increment_command_count(self, command_name: str) -> None:
         """Increment the command usage count"""
+        if not isinstance(self._user_data, UserData):
+            return
         
         self._user_data.commands_used += 1
         self._user_data.favorite_commands[command_name] = \
             self._user_data.favorite_commands.get(command_name, 0) + 1
         self.save()
     
-    def __getattr__(self, name: str) -> Any:
-        """Delegate unknown attributes to UserData object"""
-        if hasattr(self._user_data, name):
-            return getattr(self._user_data, name)
-        raise AttributeError(f"'UserManager' object has no attribute '{name}'")
+    def increase_given_reaction(self):
+        """Only call this method for UserData instances"""
+        if not isinstance(self._user_data, UserData):
+            return
+        self._user_data.reactions_given += 1
+        self.save()
+
+    def increase_received_reaction(self):
+        """Only call this method for UserData instances"""
+        if not isinstance(self._user_data, UserData):
+            return
+        self._user_data.reactions_received += 1
+        self.save()
+
+    def increase_deleted_message(self):
+        """Only call this method for UserData instances"""
+        if not isinstance(self._user_data, UserData):
+            return
+        self._user_data.deleted_messages += 1
+        self.save()
+
+    def increase_edited_message(self):
+        """Only call this method for UserData instances"""
+        if not isinstance(self._user_data, UserData):
+            return
+        self._user_data.edited_messages += 1
+        self.save()
+    
+    def set_birthdate(self, date: datetime | str):
+        """Set the user's birthdate
+
+        Args:
+            date (datetime | str): The user's birthdate as a datetime object or a string in year/month/day format
+        """
+        if not isinstance(self._user_data, UserData):
+            return
+        if isinstance(date, str):
+            date = datetime.strptime(date, "%Y/%m/%d")
+        self._user_data.birthdate = date
+        self.save()
     
 class BotManager(UserManager):
     def __init__(self, user: Union['Member', 'User']):
         super().__init__(user=user, defaultClass=BotStatistics)
-        self._user_data: BotStatistics = self._load_user_data()
-    
+
     def _load_user_data(self) -> BotStatistics:
-        """Convert raw data to BotStatistics object"""
-        return BotStatistics.from_dict(self.data)
-    
-    @property
-    def user_data(self) -> BotStatistics:
-        """Access the BotStatistics object"""
-        return self._user_data
-    
+        """Always return BotStatistics"""
+        if isinstance(self.data, dict):
+            return BotStatistics.from_dict(self.data)
+        return BotStatistics.from_member(self._user)
+
     def record_bot_message(self):
-        """Record a message sent by the bot"""
-        self.user_data.messages_sent += 1
+        if not isinstance(self._user_data, BotStatistics):
+            return
+        self._user_data.messages_sent += 1
         self.save()
 
     def record_command_processed(self, command_name: str):
-        """Record a processed command"""
-        self.user_data.commands_processed += 1
-        self.user_data.features_used[command_name] = \
-            self.user_data.features_used.get(command_name, 0) + 1
+        if not isinstance(self._user_data, BotStatistics):
+            return
+        self._user_data.commands_processed += 1
+        self._user_data.features_used[command_name] = \
+            self._user_data.features_used.get(command_name, 0) + 1
         self.save()
 
     def record_error(self, command_name: str, error_message: str):
-        """Record an error that occurred"""
-        self.user_data.errors_encountered += 1
-        if command_name not in self.user_data.command_errors:
-            self.user_data.command_errors[command_name] = []
-        self.user_data.command_errors[command_name].append(error_message)
+        if not isinstance(self._user_data, BotStatistics):
+            return
+        self._user_data.errors_encountered += 1
+        if command_name not in self._user_data.command_errors:
+            self._user_data.command_errors[command_name] = []
+        self._user_data.command_errors[command_name].append(error_message)
         self.save()
