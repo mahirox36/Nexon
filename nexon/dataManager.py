@@ -201,7 +201,7 @@ class DataManager:
         This method ensures the directory exists before writing the file.
         """
         try:
-            if self.data == self.default:
+            if self.data == self.default and not self.exists():
                 return
             self.path.mkdir(parents=True, exist_ok=True)
             
