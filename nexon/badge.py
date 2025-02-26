@@ -115,13 +115,13 @@ class BadgePayload:
     -----------
     name: :class:`str`
         The name of the badge
-    description: :class:`str` 
+    description: :class:`str`
         A description of how to earn the badge
     icon_url: :class:`str`
         URL to the badge's icon image
     guild_id: Optional[:class:`int`]
         The guild this badge belongs to, if any
-    requirements: Dict[:class:`str`, Any]
+    requirements: List[Dict[:class:`str`, Union[:class:`str`, :class:`int`]]]
         The requirements that must be met to earn this badge
     rarity: :class:`Rarity`
         How rare/difficult the badge is to obtain
@@ -143,7 +143,7 @@ class BadgePayload:
     id: int = field(init=False)  # Make id field not required in constructor
     created_at: datetime = field(default_factory=datetime.now)
     guild_id: Optional[int] = None  # None means global badge
-    requirements: Dict[str, Any] = field(default_factory=dict)
+    requirements: List[Dict[str, Union[str, int]]] = field(default_factory=list)
     rarity: Rarity = Rarity.common
     hidden: bool = False
     
@@ -204,7 +204,8 @@ def onBadgeEarned(badge: BadgePayload, user: Union['User', 'Member']) -> None:
     user: Union[:class:`User`, :class:`Member`]
         The user who earned the badge
     """
-    pass
+    # Suppress unused parameter warnings
+    _ = (badge, user)
 
 class BadgeManager:
     """Manages the badge system for tracking user achievements.
@@ -423,9 +424,10 @@ class BadgeManager:
                 elif req.type == RequirementType.SPECIFIC_EMOJI:
                     emojisExtracted = extract_emojis(req.specific_value)
                     return any(emoji in context.content for emoji in emojisExtracted)
-                
                 elif req.type == RequirementType.GIF_SENT:
-                    gif_count = len(re.findall(r'https?://(?:.*\.(?:gif|gifv)|(?:giphy\.com/gifs|tenor\.com/view)/[^\s]+)', context.content))
+                    # Using a simpler pattern to match common GIF URLs
+                    gif_count = len(re.findall(r'https?://[^\s]+\.(gif|mp4)|https?://(tenor\.com|gfycat\.com)/[^\s]+', context.content))
+                    return req.check(gif_count)
                     return req.check(gif_count)
                 
                 elif req.type == RequirementType.SPECIFIC_USER_INTERACTION:
@@ -495,7 +497,7 @@ class BadgeManager:
                 continue
                 
             requirements_met = True
-            for requirement in badge.requirements.values():
+            for requirement in badge.requirements:
                 if not await self.verify_requirement(requirement, user_data, context):
                     requirements_met = False
                     break

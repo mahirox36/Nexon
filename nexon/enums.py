@@ -2112,7 +2112,7 @@ class Rarity(IntEnum):
     legendary = 5
     """The sticker is legendary."""
 
-class RequirementType(Enum):
+class RequirementType(StrEnum):
     """
     Enumeration of requirement types for tracking user activities and achievements.
     
@@ -2158,7 +2158,7 @@ class RequirementType(Enum):
     #TODO: SLASH_COMMAND_VARIETY = "slash_command_variety"      # Track unique slash commands used
     #TODO: STICKER_USAGE = "sticker_usage"                      # Track sticker usage
 
-class ComparisonType(Enum):
+class ComparisonType(StrEnum):
     EQUAL = "equal"
     GREATER = "greater"
     LESS = "less"

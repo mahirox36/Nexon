@@ -38,6 +38,8 @@ class DataManager:
         The name of the data store
     server_id: Optional[:class:`int`]
         Server ID for guild-specific data. If provided, data will be stored in the Guilds directory
+    add_name_folder: :class:`bool`
+        Whether to include name as a subfolder in the path
     file_name: :class:`str`
         Name of the JSON file without extension. Defaults to "data"
     subfolder: Optional[:class:`str`]
@@ -48,8 +50,6 @@ class DataManager:
         Whether to automatically save on context exit
     entity_type: :class:`str` 
         Type of entity the data belongs to. Defaults to "Features"
-    add_name_folder: :class:`bool`
-        Whether to include name as a subfolder in the path
 
     Attributes
     -----------
@@ -70,15 +70,14 @@ class DataManager:
 
     def __init__(
         self,
-        *,
         name: str,
         server_id: Optional[int] = None,
+        add_name_folder: bool = True,
         file_name: str = "data",
         subfolder: Optional[str] = None,
         default: Union[Dict, List, None] = None,
         auto_save: bool = True,
         entity_type: str = "Features",
-        add_name_folder: bool = True,
     ) -> None:
         if not name:
             raise ValueError("Name cannot be empty")
