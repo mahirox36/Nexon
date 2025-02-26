@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 from .dataManager import DataManager
 
 __all__ = (
-    "BadgePayload",
+    "Badge",
     "BadgeManager",
     "BadgeRequirement",
     "onBadgeEarned",
@@ -106,7 +106,7 @@ class BadgeRequirement:
         }[self.comparison]()
 
 @dataclass
-class BadgePayload:
+class Badge:
     """A data container for badge information.
 
     .. versionadded:: Nexon 0.2.3
@@ -149,16 +149,16 @@ class BadgePayload:
     
     def __post_init__(self):
         # Load the last ID from disk if not already loaded
-        if BadgePayload._last_id == -1:
-            BadgePayload._last_id = BadgePayload._data_manager["last_id"]
+        if Badge._last_id == -1:
+            Badge._last_id = Badge._data_manager["last_id"]
         
         # Auto-generate ID when instance is created
-        BadgePayload._last_id += 1
-        self.id = BadgePayload._last_id
+        Badge._last_id += 1
+        self.id = Badge._last_id
         
         # Save the new last_id to disk
-        BadgePayload._data_manager["last_id"] = BadgePayload._last_id
-        BadgePayload._data_manager.save()
+        Badge._data_manager["last_id"] = Badge._last_id
+        Badge._data_manager.save()
     
     def to_dict(self) -> dict:
         return {
@@ -174,7 +174,7 @@ class BadgePayload:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'BadgePayload':
+    def from_dict(cls, data: dict) -> 'Badge':
         data = data.copy()
         if isinstance(data.get("created_at"), str):
             data["created_at"] = datetime.fromisoformat(data["created_at"])
@@ -192,14 +192,14 @@ class BadgePayload:
         cls._data_manager["last_id"] = -1
         cls._data_manager.save()
 
-def onBadgeEarned(badge: BadgePayload, user: Union['User', 'Member']) -> None:
+def onBadgeEarned(badge: Badge, user: Union['User', 'Member']) -> None:
     """Default event handler called when a user earns a badge.
     
     .. versionadded:: Nexon 0.2.3
     
     Parameters
     ----------
-    badge: :class:`BadgePayload`
+    badge: :class:`Badge`
         The badge that was earned
     user: Union[:class:`User`, :class:`Member`]
         The user who earned the badge
@@ -233,7 +233,7 @@ class BadgeManager:
         """Set a new callback function for badge earning events"""
         cls.badge_earned_callback = staticmethod(callback)
         
-    async def add_badge(self, badge: BadgePayload) -> None:
+    async def add_badge(self, badge: Badge) -> None:
         """Add a new badge"""
         badges = self.data_manager["badges"]
         if str(badge.id) in badges:
@@ -249,18 +249,18 @@ class BadgeManager:
         del badges[str(badge_id)]
         self.data_manager.save()
 
-    async def get_badge(self, badge_id: int) -> Optional[BadgePayload]:
+    async def get_badge(self, badge_id: int) -> Optional[Badge]:
         """Get a badge by ID"""
         badges = self.data_manager["badges"]
         if badge_data := badges.get(str(badge_id)):
-            return BadgePayload.from_dict(badge_data)
+            return Badge.from_dict(badge_data)
         return None
 
-    async def get_all_badges(self) -> List[BadgePayload]:
+    async def get_all_badges(self) -> List[Badge]:
         """Get all badges"""
-        return [BadgePayload.from_dict(b) for b in self.data_manager["badges"].values()]
+        return [Badge.from_dict(b) for b in self.data_manager["badges"].values()]
 
-    async def update_badge(self, badge_id: int, updated_badge: BadgePayload) -> None:
+    async def update_badge(self, badge_id: int, updated_badge: Badge) -> None:
         """Update an existing badge"""
         badges = self.data_manager["badges"]
         if str(badge_id) not in badges:
@@ -297,7 +297,7 @@ class BadgeManager:
             user_data.badges.remove(badge_id)
             user_manager.save()
 
-    async def get_user_badges(self, user: Union['User', 'Member']) -> List[BadgePayload]:
+    async def get_user_badges(self, user: Union['User', 'Member']) -> List[Badge]:
         """Get all badges a user has"""
         user_manager = UserManager(user)
         user_badges = []
@@ -311,7 +311,7 @@ class BadgeManager:
                 
         return user_badges
     
-    async def add_badges_from_list(self, badges: List[BadgePayload]) -> None:
+    async def add_badges_from_list(self, badges: List[Badge]) -> None:
         """Add multiple badges from a list"""
         for badge in badges:
             try:
@@ -319,7 +319,7 @@ class BadgeManager:
             except ValueError:
                 continue
 
-    async def sync_badges_with_list(self, badges: List[BadgePayload]) -> None:
+    async def sync_badges_with_list(self, badges: List[Badge]) -> None:
         """Sync badges with a list - add missing and remove extra badges"""
         current_badges = await self.get_all_badges()
         new_badge_ids = {badge.id for badge in badges}
@@ -334,18 +334,18 @@ class BadgeManager:
             if badge.id not in current_badge_ids:
                 await self.add_badge(badge)
 
-    async def get_user_unowned_badges(self, user: Union['User', 'Member']) -> List[BadgePayload]:
+    async def get_user_unowned_badges(self, user: Union['User', 'Member']) -> List[Badge]:
         """Get all badges the user doesn't have"""
         all_badges = await self.get_all_badges()
         user_badges = await self.get_user_badges(user)
         return [badge for badge in all_badges if badge not in user_badges]
 
-    async def get_user_hidden_badges(self, user: Union['User', 'Member']) -> List[BadgePayload]:
+    async def get_user_hidden_badges(self, user: Union['User', 'Member']) -> List[Badge]:
         """Get all hidden badges the user has"""
         user_badges = await self.get_user_badges(user)
         return [badge for badge in user_badges if badge.hidden]
 
-    async def get_user_unowned_hidden_badges(self, user: Union['User', 'Member']) -> List[BadgePayload]:
+    async def get_user_unowned_hidden_badges(self, user: Union['User', 'Member']) -> List[Badge]:
         """Get all hidden badges the user doesn't have"""
         unowned_badges = await self.get_user_unowned_badges(user)
         return [badge for badge in unowned_badges if badge.hidden]
@@ -475,13 +475,13 @@ class BadgeManager:
         self,
         user: Union['User', 'Member'],
         context: Optional[Union[Message, Interaction]] = None
-    ) -> List[BadgePayload]:
+    ) -> List[Badge]:
         """Check if the user has earned any new badges and award them"""
         
         
         user_manager = UserManager(user)
         user_data = user_manager.user_data
-        earned_badges: List[BadgePayload] = []
+        earned_badges: List[Badge] = []
         
         if not isinstance(user_data, UserData):
             return []
@@ -512,6 +512,6 @@ class BadgeManager:
         self,
         user: Union['User', 'Member'],
         context: Optional[Union[Message, Interaction]] = None
-    ) -> List[BadgePayload]:
+    ) -> List[Badge]:
         """Process an event and check for new badges"""
         return await self.check_for_new_badges(user, context)
