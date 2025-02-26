@@ -28,9 +28,12 @@ from .data.user import UserManager, UserData
 
 if TYPE_CHECKING:
     from .user import User
+    from .guild import Guild
     from .member import Member
 
 from .dataManager import DataManager
+import logging
+logger = logging.getLogger(__name__)
 
 __all__ = (
     "Badge",
@@ -127,38 +130,16 @@ class Badge:
         How rare/difficult the badge is to obtain
     hidden: :class:`bool`
         Whether this badge should be hidden from users
-    """
+"""
     name: str
     description: str
     icon_url: str
-    _last_id: int = -1
-    _data_manager = DataManager(
-        name="BadgeCounter",
-        server_id=None,
-        default={"last_id": -1},
-        entity_type="System",
-        add_name_folder=False
-    )
-    
-    id: int = field(init=False)  # Make id field not required in constructor
+    id: int = field(default=-1)  # ID will be assigned by BadgeManager
     created_at: datetime = field(default_factory=datetime.now)
-    guild_id: Optional[int] = None  # None means global badge
+    guild_id: Optional[int] = None
     requirements: List[Dict[str, Union[str, int]]] = field(default_factory=list)
     rarity: Rarity = Rarity.common
     hidden: bool = False
-    
-    def __post_init__(self):
-        # Load the last ID from disk if not already loaded
-        if Badge._last_id == -1:
-            Badge._last_id = Badge._data_manager["last_id"]
-        
-        # Auto-generate ID when instance is created
-        Badge._last_id += 1
-        self.id = Badge._last_id
-        
-        # Save the new last_id to disk
-        Badge._data_manager["last_id"] = Badge._last_id
-        Badge._data_manager.save()
     
     def to_dict(self) -> dict:
         return {
@@ -178,21 +159,9 @@ class Badge:
         data = data.copy()
         if isinstance(data.get("created_at"), str):
             data["created_at"] = datetime.fromisoformat(data["created_at"])
-        # Update _last_id if loaded ID is higher
-        if data.get("id", -1) > cls._last_id:
-            cls._last_id = data["id"]
-            cls._data_manager["last_id"] = cls._last_id
-            cls._data_manager.save()
         return cls(**data)
 
-    @classmethod
-    def reset_id_counter(cls):
-        """Reset the ID counter back to -1"""
-        cls._last_id = -1
-        cls._data_manager["last_id"] = -1
-        cls._data_manager.save()
-
-def onBadgeEarned(badge: Badge, user: Union['User', 'Member']) -> None:
+async def onBadgeEarned(user: Union['User', 'Member'], badge: Badge) -> None:
     """Default event handler called when a user earns a badge.
     
     .. versionadded:: Nexon 0.2.3
@@ -220,29 +189,67 @@ class BadgeManager:
     badge_earned_callback = staticmethod(onBadgeEarned)
     
     def __init__(self, guild_id: Optional[int] = None):
+        self.guild_id = guild_id
         self.data_manager = DataManager(
             name="Badges",
             server_id=guild_id,
-            default={"badges": {}},
-            entity_type= "Badges",
-            add_name_folder= True if guild_id else False
+            default={"badges": {}, "last_id": -1},  # Added last_id to data_manager
+            entity_type="Badges",
+            add_name_folder=True if guild_id else False
         )
+        
+    def _get_next_id(self) -> int:
+        """Get the next available badge ID"""
+        current_id = self.data_manager["last_id"]
+        next_id = current_id + 1
+        self.data_manager["last_id"] = next_id
+        self.data_manager.save()
+        return next_id
     
     @classmethod
     def set_badge_earned_callback(cls, callback: Callable) -> None:
         """Set a new callback function for badge earning events"""
         cls.badge_earned_callback = staticmethod(callback)
-        
+    
+    @classmethod
+    def guild_has_badges(cls, guild_id: int) -> bool:
+        """Check if a guild has any badges"""
+        data_manager = DataManager(
+            name="Badges",
+            server_id=guild_id,
+            default={"badges": {}},
+            entity_type= "Badges",
+            add_name_folder= True
+        )
+        return data_manager.exists() and bool(data_manager.get("badges", False))
+    @classmethod
+    def try_get_guild(cls, guild: Optional['Guild']) -> BadgeManager:
+        """Try to get a guild's badge manager and if not it get the global badge manager"""
+        return cls(guild.id if guild and BadgeManager.guild_has_badges(guild.id) else None)
+    
     async def add_badge(self, badge: Badge) -> None:
         """Add a new badge"""
+        logger.debug(f"Adding new badge: {badge.name}")
+        
+        # Only assign ID if not already set
+        if badge.id == -1:
+            badge.id = self._get_next_id()
+        
         badges = self.data_manager["badges"]
         if str(badge.id) in badges:
             raise ValueError(f"Badge with ID {badge.id} already exists")
+            
+        # Set guild_id if not already set
+        if badge.guild_id is None:
+            badge.guild_id = self.guild_id
+            
         badges[str(badge.id)] = badge.to_dict()
         self.data_manager.save()
+        logger.debug(f"Badge added with ID: {badge.id}")
 
     async def remove_badge(self, badge_id: int) -> None:
         """Remove a badge by ID"""
+        logger.debug(f"Removing badge with ID: {badge_id}")
         badges = self.data_manager["badges"]
         if str(badge_id) not in badges:
             raise ValueError(f"Badge with ID {badge_id} does not exist")
@@ -251,6 +258,7 @@ class BadgeManager:
 
     async def get_badge(self, badge_id: int) -> Optional[Badge]:
         """Get a badge by ID"""
+        logger.debug(f"Fetching badge with ID: {badge_id}")
         badges = self.data_manager["badges"]
         if badge_data := badges.get(str(badge_id)):
             return Badge.from_dict(badge_data)
@@ -258,10 +266,12 @@ class BadgeManager:
 
     async def get_all_badges(self) -> List[Badge]:
         """Get all badges"""
+        logger.debug("Fetching all badges")
         return [Badge.from_dict(b) for b in self.data_manager["badges"].values()]
 
     async def update_badge(self, badge_id: int, updated_badge: Badge) -> None:
         """Update an existing badge"""
+        logger.debug(f"Updating badge with ID {badge_id}: {updated_badge.name}")
         badges = self.data_manager["badges"]
         if str(badge_id) not in badges:
             raise ValueError(f"Badge with ID {badge_id} does not exist")
@@ -270,7 +280,7 @@ class BadgeManager:
 
     async def award_badge(self, user: Union['User', 'Member'], badge_id: int) -> None:
         """Award a badge to a user"""
-        
+        logger.debug(f"Awarding badge {badge_id} to user {user.id}")
         badge = await self.get_badge(badge_id)
         if not badge:
             raise ValueError(f"Badge with ID {badge_id} does not exist")
@@ -283,10 +293,11 @@ class BadgeManager:
         if badge_id not in user_data.badges:
             user_data.badges.add(badge_id)
             user_manager.save()
-            self.badge_earned_callback(badge, user)
+            await self.badge_earned_callback(user, badge)
 
     async def remove_user_badge(self, user: Union['User', 'Member'], badge_id: int) -> None:
         """Remove a badge from a user"""
+        logger.debug(f"Removing badge {badge_id} from user {user.id}")
         user_manager = UserManager(user)
         user_data = user_manager.user_data
         
@@ -299,6 +310,7 @@ class BadgeManager:
 
     async def get_user_badges(self, user: Union['User', 'Member']) -> List[Badge]:
         """Get all badges a user has"""
+        logger.debug(f"Fetching badges for user {user.id}")
         user_manager = UserManager(user)
         user_badges = []
         
@@ -313,6 +325,7 @@ class BadgeManager:
     
     async def add_badges_from_list(self, badges: List[Badge]) -> None:
         """Add multiple badges from a list"""
+        logger.debug(f"Adding {len(badges)} badges from list")
         for badge in badges:
             try:
                 await self.add_badge(badge)
@@ -321,6 +334,7 @@ class BadgeManager:
 
     async def sync_badges_with_list(self, badges: List[Badge]) -> None:
         """Sync badges with a list - add missing and remove extra badges"""
+        logger.debug(f"Syncing badge list with {len(badges)} badges")
         current_badges = await self.get_all_badges()
         new_badge_ids = {badge.id for badge in badges}
         current_badge_ids = {badge.id for badge in current_badges}
@@ -336,17 +350,20 @@ class BadgeManager:
 
     async def get_user_unowned_badges(self, user: Union['User', 'Member']) -> List[Badge]:
         """Get all badges the user doesn't have"""
+        logger.debug(f"Fetching unowned badges for user {user.id}")
         all_badges = await self.get_all_badges()
         user_badges = await self.get_user_badges(user)
         return [badge for badge in all_badges if badge not in user_badges]
 
     async def get_user_hidden_badges(self, user: Union['User', 'Member']) -> List[Badge]:
         """Get all hidden badges the user has"""
+        logger.debug(f"Fetching hidden badges for user {user.id}")
         user_badges = await self.get_user_badges(user)
         return [badge for badge in user_badges if badge.hidden]
 
     async def get_user_unowned_hidden_badges(self, user: Union['User', 'Member']) -> List[Badge]:
         """Get all hidden badges the user doesn't have"""
+        logger.debug(f"Fetching unowned hidden badges for user {user.id}")
         unowned_badges = await self.get_user_unowned_badges(user)
         return [badge for badge in unowned_badges if badge.hidden]
 
@@ -357,6 +374,7 @@ class BadgeManager:
         context: Optional[Union[Message, Interaction]] = None
     ) -> bool:
         """Verify if a single requirement is met"""
+        logger.debug(f"Verifying requirement: {requirement['type']} for user {getattr(user_data, 'id', 'Unknown')}")
         req = BadgeRequirement.from_dict(requirement)
         
         # Basic numeric requirements
@@ -428,7 +446,6 @@ class BadgeManager:
                     # Using a simpler pattern to match common GIF URLs
                     gif_count = len(re.findall(r'https?://[^\s]+\.(gif|mp4)|https?://(tenor\.com|gfycat\.com)/[^\s]+', context.content))
                     return req.check(gif_count)
-                    return req.check(gif_count)
                 
                 elif req.type == RequirementType.SPECIFIC_USER_INTERACTION:
                     if context.reference and context.reference.message_id:
@@ -477,6 +494,7 @@ class BadgeManager:
         context: Optional[Union[Message, Interaction]] = None
     ) -> List[Badge]:
         """Check if the user has earned any new badges and award them"""
+        logger.debug(f"Checking for new badges for user {user.id}")
         
         
         user_manager = UserManager(user)
@@ -514,4 +532,5 @@ class BadgeManager:
         context: Optional[Union[Message, Interaction]] = None
     ) -> List[Badge]:
         """Process an event and check for new badges"""
+        logger.debug(f"Processing event for user {user.id}")
         return await self.check_for_new_badges(user, context)

@@ -37,6 +37,7 @@ from typing import (
 import aiohttp
 
 
+
 from . import utils
 from .activity import ActivityTypes, BaseActivity, create_activity
 from .appinfo import AppInfo
@@ -47,6 +48,7 @@ from .application_command import (
     user_command,
 )
 from .backoff import ExponentialBackoff
+from .badge import BadgeManager
 from .channel import PartialMessageable, _threaded_channel_factory
 from .colour import PreColour
 from .data.user import UserManager
@@ -2243,6 +2245,7 @@ class Client:
         if self._enable_user_data and interaction.user:
             userData = UserManager(interaction.user)
             await userData.commandCount(interaction)
+            await BadgeManager.try_get_guild(interaction.guild).process_event(interaction.user, interaction)
         await self.process_application_commands(interaction)
 
     async def process_application_commands(self, interaction: Interaction) -> None:
@@ -3157,6 +3160,7 @@ class Client:
             try:
                 userData = UserManager(message.author) 
                 await userData.incrementMessageCount(message)
+                await BadgeManager.try_get_guild(message.guild).process_event(message.author, message)
             except Exception as e:
                 self.print_error(e)
         
@@ -3170,6 +3174,7 @@ class Client:
                 receiverUserData = UserManager(reaction.message.author)
                 userData.increase_given_reaction()
                 receiverUserData.increase_received_reaction()
+                await BadgeManager.try_get_guild(reaction.message.guild).process_event(user, reaction.message)
             except Exception as e:
                 self.print_error(e)
         
@@ -3181,6 +3186,7 @@ class Client:
             try:
                 userData = UserManager(message.author) 
                 userData.increase_deleted_message()
+                await BadgeManager.try_get_guild(message.guild).process_event(message.author, message)
             except Exception as e:
                 self.print_error(e)
                 
@@ -3192,5 +3198,6 @@ class Client:
             try:
                 userData = UserManager(after.author) 
                 userData.increase_edited_message()
+                await BadgeManager.try_get_guild(after.guild).process_event(after.author, after)
             except Exception as e:
                 self.print_error(e)
