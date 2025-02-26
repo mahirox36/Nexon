@@ -201,6 +201,8 @@ class DataManager:
         This method ensures the directory exists before writing the file.
         """
         try:
+            if self.data == self.default:
+                return
             self.path.mkdir(parents=True, exist_ok=True)
             
             # Create a deep copy for both cache and file
