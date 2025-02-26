@@ -29,11 +29,14 @@ from .application_command import *
 from .asset import *
 from .audit_logs import *
 from .auto_moderation import *
+from .badge import *
 from .bans import *
 from .channel import *
 from .client import *
 from .colour import *
 from .components import *
+from .dataManager import *
+from .data.user import *
 from .embeds import *
 from .emoji import *
 from .enums import *
@@ -68,8 +71,6 @@ from .voice_client import *
 from .webhook import *
 from .widget import *
 from .typing import *
-from .dataManager import DataManager
-from .data.user import UserManager
 
 
 class VersionInfo(NamedTuple):
