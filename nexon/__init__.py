@@ -35,7 +35,7 @@ from .channel import *
 from .client import *
 from .colour import *
 from .components import *
-from .dataManager import *
+from .database import *
 from .data.user import *
 from .embeds import *
 from .emoji import *

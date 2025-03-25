@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     )
     from .types.user import User as UserPayload
     from .types.voice import VoiceState as VoiceStatePayload
+    from .data.models import UserData
 
     VocalGuildChannel = Union[VoiceChannel, StageChannel]
 
@@ -1072,3 +1073,11 @@ class Member(abc.Messageable, _UserTag):
             The role or ``None`` if not found in the member's roles.
         """
         return self.guild.get_role(role_id) if self._roles.has(role_id) else None
+
+    async def get_data(self) -> 'UserData':
+        """Returns the user data object associated with this user.
+
+        .. versionadded:: Nexon 0.3.0
+        """
+        user, _ = await UserData.get_or_create(id=self.id)
+        return user

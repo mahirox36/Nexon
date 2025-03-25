@@ -2141,8 +2141,12 @@ class RequirementType(StrEnum):
     UNIQUE_EMOJI_COUNT = "unique_emoji_count"
     SPECIFIC_EMOJI = "specific_emoji"
     ALL_COMMANDS = "all_commands"
-    MESSAGE_EDIT_COUNT = "message_edit_count"                        # Track message edits
-    MESSAGE_DELETE_COUNT = "message_delete_count"                    # Track message deletions
+    MESSAGE_EDIT_COUNT = "message_edit_count"
+    MESSAGE_DELETE_COUNT = "message_delete_count"
+    
+    # New in Nexon 0.3.0
+    SERVER_BOOST = "server_boost"
+    LEVEL = "level"
 
     # New suggested types
     #TODO: THREAD_CREATION = "thread_creation"                  # Track thread creation 
@@ -2159,11 +2163,15 @@ class RequirementType(StrEnum):
     #TODO: STICKER_USAGE = "sticker_usage"                      # Track sticker usage
 
 class ComparisonType(StrEnum):
-    EQUAL = "equal"
-    GREATER = "greater"
-    LESS = "less"
-    GREATER_EQUAL = "greater_equal"
-    LESS_EQUAL = "less_equal"
+    """
+    Enumeration of Comparison types for Comparing Values.
+    .. versionadded:: Nexon 0.3.0
+    """
+    GREATER_EQUAL = ">="
+    LESS_EQUAL = "<="
+    EQUAL = "=="
+    GREATER = ">"
+    LESS = "<"
 
 T = TypeVar("T")
 

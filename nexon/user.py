@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from .state import ConnectionState
     from .types.channel import DMChannel as DMChannelPayload
     from .types.user import PartialUser as PartialUserPayload, User as UserPayload
+    from .data.models import UserData
 
 
 __all__ = (
@@ -533,3 +534,11 @@ class User(BaseUser, abc.Messageable):
         state = self._state
         data: DMChannelPayload = await state.http.start_private_message(self.id)
         return state.add_dm_channel(data)
+
+    async def get_data(self) -> 'UserData':
+        """Returns the user data object associated with this user.
+
+        .. versionadded:: Nexon 0.3.0
+        """
+        user, _ = await UserData.get_or_create(id=self.id)
+        return user

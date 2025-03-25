@@ -51,7 +51,6 @@ if TYPE_CHECKING:
     from nexon.flags import MemberCacheFlags
     from nexon.mentions import AllowedMentions
     from nexon.message import Message
-    from nexon.dataManager import DataManager
 
     from ._types import Check, CoroFunc
 
