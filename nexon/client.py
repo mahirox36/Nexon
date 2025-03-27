@@ -2242,7 +2242,7 @@ class Client:
 
     async def on_interaction(self, interaction: Interaction) -> None:
         if self._enable_user_data and interaction.user:
-            userData = UserManager(interaction.user)
+            userData = await UserManager.from_user(interaction.user)
             await userData.commandCount(interaction)
             badgeManager = BadgeManager.try_get_guild(interaction.guild)
             await badgeManager.check_and_award_badges(interaction.user, interaction)
@@ -3158,7 +3158,7 @@ class Client:
             if message.author.bot:
                 return
             try:
-                userData = UserManager(message.author) 
+                userData = await UserManager.from_user(message.author) 
                 await userData.incrementMessageCount(message)
                 await BadgeManager.try_get_guild(message.guild).check_and_award_badges(message.author, message)
             except Exception as e:

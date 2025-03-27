@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 
 import enum
+from enum import IntEnum as BaseIntEnum
 from typing import Any, Dict, NamedTuple, Optional, Type, TypeVar
 
 __all__ = (
@@ -56,6 +57,7 @@ __all__ = (
     "Rarity",
     "RequirementType",
     "ComparisonType",
+    "ScopeType"
 )
 
 
@@ -2095,7 +2097,7 @@ class MessageReferenceType(IntEnum):
     forward = 1
     """The reference is used to point to a message."""
 
-class Rarity(IntEnum):
+class Rarity(BaseIntEnum):
     """Represents the rarity of a sticker.
 
     .. versionadded:: Nexon 0.2.1
@@ -2172,6 +2174,17 @@ class ComparisonType(StrEnum):
     EQUAL = "=="
     GREATER = ">"
     LESS = "<"
+    NOT_EQUAL = "!="
+
+class ScopeType(StrEnum):
+    """
+    Enumeration of scope types for features settings.
+    
+    .. versionadded:: Nexon 0.3.0
+    """
+    GUILD = "guild"
+    USER = "user"
+    GLOBAL = "global"
 
 T = TypeVar("T")
 

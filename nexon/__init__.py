@@ -36,7 +36,7 @@ from .client import *
 from .colour import *
 from .components import *
 from .database import *
-from .data.user import *
+from .data import *
 from .embeds import *
 from .emoji import *
 from .enums import *

@@ -17,7 +17,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 
 
-from .enums import RequirementType
+from .enums import RequirementType, Rarity, ComparisonType
 import re
 from .utils import extract_emojis
 from .message import Message
@@ -85,12 +85,22 @@ class BadgeManager:
         """Try to get a guild object by its ID. and if didn't get it, it get the global one"""
         return cls(guild.id) if guild else cls()
     
-    async def create_badge(self, name: str, description: str, icon_url: str) -> Badge:
-        badge = await Badge.create(
+    async def create_badge(self,
+                           name: str,
+                           description: str,
+                           icon_url: str,
+                           rarity: Rarity = Rarity.common,
+                           hidden: bool = False,
+                           requirements: Optional[list[tuple[RequirementType, ComparisonType, str]]] = None
+                           ) -> Badge:
+        badge = await Badge.create_badge_with_requirements(
             name=name,
             description=description,
             icon_url=icon_url,
             guild_id=self.guild_id,
+            rarity=rarity,
+            hidden=hidden,
+            requirements=requirements
         )
         return badge
 

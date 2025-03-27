@@ -33,19 +33,19 @@ async def init_db(
     username: Optional[str],
     password: Optional[str],
     host: Optional[str],
-    port: Optional[int] = 5432,
+    port: int = 5432,
     db_name: str = "bot",
-    database: Optional[str] = "postgres"
+    database: str = "postgres"
     ) -> None:
     if database == "sqlite":
         db_name = f"{db_name}.sqlite3"
     else:
-        if not username or not password or not host or port:
-            raise ValueError("Username, password, and host are required for PostgreSQL.")
+        if not username or not password or not host:
+            raise ValueError(f"Username, password, and host are required for {database or "PostgreSQL"}.")
         db_name = f"{username}:{password}@{host}:{port}/{db_name}"
     await Tortoise.init(
         db_url=f"{database}://{db_name}", #"sqlite://db.sqlite3",
-        modules={"models": ["data.models"]},
+        modules={"models": ["nexon.data.models"]},
     )
     await Tortoise.generate_schemas()
 
