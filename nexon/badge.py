@@ -89,6 +89,7 @@ class BadgeManager:
                            name: str,
                            description: str,
                            icon_url: str,
+                           emoji: str,
                            rarity: Rarity = Rarity.common,
                            hidden: bool = False,
                            requirements: Optional[list[tuple[RequirementType, ComparisonType, str]]] = None
@@ -97,6 +98,7 @@ class BadgeManager:
             name=name,
             description=description,
             icon_url=icon_url,
+            emoji=emoji,
             guild_id=self.guild_id,
             rarity=rarity,
             hidden=hidden,

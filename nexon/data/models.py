@@ -204,6 +204,7 @@ class Badge(Model):
         name (str): Badge name
         description (str): Badge description
         icon_url (str): URL to badge icon
+        emoji (str): Custom Emoji of the badge
         created_at (datetime): Creation timestamp
         guild_id (int): Guild-specific badge ID
         rarity (Rarity): Badge rarity
@@ -215,6 +216,7 @@ class Badge(Model):
     name = fields.CharField(max_length=100, unique=True)
     description = fields.TextField()
     icon_url = fields.CharField(max_length=255)  # Image URL
+    emoji = fields.CharField(max_length=255)
     created_at = fields.DatetimeField(auto_now_add=True)  # Creation timestamp
     guild_id = fields.IntField(null=True)  # Nullable, for guild-specific badges
     rarity = fields.IntEnumField(Rarity, default=Rarity.common)  # Enum for rarity
@@ -241,6 +243,7 @@ class Badge(Model):
         name: str,
         description: str,
         icon_url: str,
+        emoji: str,
         rarity: Rarity,
         hidden: bool,
         guild_id: Optional[int],
@@ -252,6 +255,7 @@ class Badge(Model):
             name (str): Badge name.
             description (str): Badge description.
             icon_url (str): URL to the badge icon.
+            emoji (str): Custom Emoji of the badge
             rarity (Rarity): Rarity enum.
             hidden (bool): Whether the badge is hidden.
             guild_id (Optional[int]): Guild ID if it's a guild-specific badge.
@@ -265,6 +269,7 @@ class Badge(Model):
             name=name,
             description=description,
             icon_url=icon_url,
+            emoji=emoji,
             rarity=rarity,
             hidden=hidden,
             guild_id=guild_id
@@ -287,6 +292,7 @@ class Badge(Model):
             "name": self.name,
             "description": self.description,
             "icon_url": self.icon_url,
+            "emoji": self.emoji,
             "created_at": self.created_at.isoformat(),  # Convert datetime to string
             "guild_id": self.guild_id,
             "rarity": self.rarity.name,  # Convert Enum to string
@@ -430,24 +436,34 @@ class Feature(Model):
         unique_together = (("name", "scope_type", "scope_id"),)
 
     @classmethod
-    async def get_guild_feature(cls, guild_id: int, feature_name: str) -> Optional['Feature']:
+    async def get_guild_feature(cls, guild_id: int, feature_name: str, default: Any = {}) -> 'Feature':
         """Get a feature for a specific guild."""
         feature,_ = await cls.get_or_create(
             name=feature_name,
             scope_type=ScopeType.GUILD,
             scope_id=guild_id,
-            defaults={'settings': {}}
+            defaults={'settings': default}
         )
         return feature
 
     @classmethod
-    async def get_user_feature(cls, user_id: int, feature_name: str) -> Optional['Feature']:
+    async def get_user_feature(cls, user_id: int, feature_name: str, default: Any = {}) -> 'Feature':
         """Get a feature for a specific user."""
         feature, _ = await cls.get_or_create(
             name=feature_name,
             scope_type=ScopeType.USER,
             scope_id=user_id,
-            defaults={'settings': {}}
+            defaults={'settings': default}
+        )
+        return feature
+
+    @classmethod
+    async def get_global_feature(cls, feature_name: str, default: Any = {}) -> 'Feature':
+        """Get a global feature"""
+        feature, _ = await cls.get_or_create(
+            name=feature_name,
+            scope_type=ScopeType.GLOBAL,
+            defaults={'settings': default}
         )
         return feature
 
@@ -477,3 +493,6 @@ class Feature(Model):
             await self.save()
             return True
         return False
+    async def delete_class(self):
+        """Delete everything"""
+        await self.delete()
