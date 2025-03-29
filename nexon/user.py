@@ -10,6 +10,7 @@ from .colour import Colour
 from .enums import DefaultAvatar
 from .flags import PublicUserFlags
 from .utils import MISSING, obj_to_base64_data, snowflake_time
+from .data.models import UserData
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -23,7 +24,6 @@ if TYPE_CHECKING:
     from .state import ConnectionState
     from .types.channel import DMChannel as DMChannelPayload
     from .types.user import PartialUser as PartialUserPayload, User as UserPayload
-    from .data.models import UserData
 
 
 __all__ = (

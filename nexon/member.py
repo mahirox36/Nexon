@@ -20,6 +20,7 @@ from .object import Object
 from .permissions import Permissions
 from .user import BaseUser, User, _UserTag
 from .utils import MISSING
+from .data.models import UserData
 
 __all__ = (
     "VoiceState",
@@ -44,7 +45,6 @@ if TYPE_CHECKING:
     )
     from .types.user import User as UserPayload
     from .types.voice import VoiceState as VoiceStatePayload
-    from .data.models import UserData
 
     VocalGuildChannel = Union[VoiceChannel, StageChannel]
 

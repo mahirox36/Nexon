@@ -118,13 +118,49 @@ class BadgeManager:
         return await query.all()
 
     async def update_badge(self, badge_id: int, **kwargs) -> Optional[Badge]:
+        """Update a badge's attributes in the database.
+
+        Parameters
+        ----------
+        badge_id: int
+            The ID of the badge to update
+        **kwargs
+            The attributes to update. Can include:
+            - name: str
+            - description: str 
+            - icon_url: str
+            - emoji: str
+            - rarity: Rarity
+            - hidden: bool
+            - requirements: List[tuple[RequirementType, ComparisonType, str]]
+
+        Returns
+        -------
+        Optional[Badge]
+            The updated badge, or None if badge not found
+        """
         badge = await self.get_badge(badge_id)
-        if badge:
-            for key, value in kwargs.items():
-                setattr(badge, key, value)
-            await badge.save()
-            return badge
-        return None
+        if not badge:
+            return None
+
+        if 'requirements' in kwargs:
+            # Delete existing requirements
+            await BadgeRequirement.filter(badge_id=badge_id).delete()
+            # Create new requirements
+            requirements = kwargs.pop('requirements')
+            if requirements:
+                await BadgeRequirement.bulk_create([
+                    BadgeRequirement(
+                        badge=badge,
+                        type=req[0],
+                        comparison_type=req[1],
+                        value=req[2]
+                    ) for req in requirements
+                ])
+
+        # Update other badge attributes
+        await Badge.filter(id=badge_id).update(**kwargs)
+        return await self.get_badge(badge_id)
 
     async def award_badge(self, user: Union['User', 'Member'], badge_id: int) -> bool:
         if await UserBadge.filter(user_id=user.id, badge_id=badge_id).exists():
