@@ -19,6 +19,7 @@ Usage:
 import json
 from math import floor, sqrt
 from tortoise import fields, Model
+from tortoise import exceptions
 from typing import Any, Dict, Set, Union, Optional, TYPE_CHECKING
 
 from ..enums import ComparisonType, Rarity, RequirementType, ScopeType
@@ -218,7 +219,7 @@ class Badge(Model):
     icon_url = fields.CharField(max_length=255)  # Image URL
     emoji = fields.CharField(max_length=255)
     created_at = fields.DatetimeField(auto_now_add=True)  # Creation timestamp
-    guild_id = fields.IntField(null=True)  # Nullable, for guild-specific badges
+    guild_id = fields.BigIntField(null=True)  # Nullable, for guild-specific badges
     rarity = fields.IntEnumField(Rarity, default=Rarity.common)  # Enum for rarity
     hidden = fields.BooleanField(default=False)  # If the badge is hidden
 
@@ -265,6 +266,12 @@ class Badge(Model):
         Returns:
             Badge: The created badge object.
         """
+        # Check if badge with the same name already exists
+        existing_badge = await Badge.filter(name=name).first()
+        if existing_badge:
+            raise Exception(f"Badge with name '{name}' already exists.")
+        
+        # Create the badge
         badge = await cls.create(
             name=name,
             description=description,
@@ -274,14 +281,15 @@ class Badge(Model):
             hidden=hidden,
             guild_id=guild_id
         )
-
+    
         if requirements:
+            # Create the requirements
             requirement_objs = [
                 BadgeRequirement(badge=badge, type=req_type, comparison=req_comparison, value=req_value)
                 for req_type, req_comparison, req_value in requirements
             ]
-    
-            await BadgeRequirement.bulk_create(requirement_objs)  # Efficient batch insert
+            await BadgeRequirement.bulk_create(requirement_objs)
+        
         return badge
     async def to_dict(self) -> dict:
         """Convert the Badge object into a dictionary, including its requirements."""
@@ -331,7 +339,6 @@ class BadgeRequirement(Model):
     
     class Meta:
         table = "badge_requirements"
-        unique_together = ("badge", "type")
     
     def compare(self, user_value: int, second_value: Optional[int] = None) -> bool:
         """Compare integer values based on the requirement type and comparison operator."""
