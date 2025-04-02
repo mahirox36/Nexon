@@ -70,7 +70,7 @@ from .user import *
 from .voice_client import *
 from .webhook import *
 from .widget import *
-from .typing import *
+from .typing_manager import *
 
 
 class VersionInfo(NamedTuple):
