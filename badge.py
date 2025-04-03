@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from .guild import Guild
     from .member import Member
 
-from .database import DataManager
+
 import logging
 logger = logging.getLogger(__name__)
 
