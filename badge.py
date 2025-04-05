@@ -12,7 +12,7 @@ Badge system implementation for tracking user achievements.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union, Callable
+from typing import TYPE_CHECKING, Tuple, Union, Callable
 from typing import List, Optional
 from datetime import datetime, timedelta
 
@@ -22,7 +22,7 @@ import re
 from .utils import extract_emojis
 from .message import Message
 from .interactions import Interaction
-from .data.user import UserData
+from .data import UserData
 from tortoise.expressions import Q
 from .data.models import UserBadge, Badge, BadgeRequirement
 
@@ -70,6 +70,7 @@ class BadgeManager:
     
     def __init__(self, guild_id: Optional[int] = None):
         self.guild_id = guild_id
+        self.is_guild = False if not guild_id else True 
     
     @classmethod
     def set_badge_earned_callback(cls, callback: Callable) -> None:
@@ -81,9 +82,9 @@ class BadgeManager:
         return await Badge.filter(guild_id=guild_id).exists()
 
     @classmethod
-    def try_get_guild(cls, guild: Optional['Guild']) -> BadgeManager:
+    def try_get_guild(cls, guild: Optional['Guild']) -> Tuple['BadgeManager', bool]:
         """Try to get a guild object by its ID. and if didn't get it, it get the global one"""
-        return cls(guild.id) if guild else cls()
+        return (cls(guild.id) if guild else cls(), True if guild else False)
     
     async def create_badge(self,
                            name: str,
@@ -312,7 +313,7 @@ class BadgeManager:
         logger.debug(f"Checking for new badges for user {user.id}")
         unowned_badges = await self.get_user_unowned_badges(user.id)
         earned_badges = []
-        userData, _ = await UserData.get_or_create_user(user)
+        userData = await user.get_data()
         
         for badge in unowned_badges:
             if not badge.requirements:

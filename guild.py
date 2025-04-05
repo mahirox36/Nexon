@@ -24,6 +24,8 @@ from typing import (
     overload,
 )
 
+from nexon.data.models import GuildData
+
 from . import abc, utils
 from .asset import Asset
 from .auto_moderation import AutoModerationRule, AutoModerationTriggerMetadata
@@ -4015,3 +4017,16 @@ class Guild(Hashable):
         """
         it = filter(None, map(self.get_channel, utils.parse_raw_channel_mentions(text)))
         return utils.unique(it)
+
+    async def get_data(self):
+        """|coro|
+        
+        Returns the data of the guild.
+
+        Returns
+        -------
+        :class:`GuildData`
+            The guild data.
+        """
+        guild, _ = await GuildData.get_or_create_guild(self)
+        return guild

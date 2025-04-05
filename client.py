@@ -51,7 +51,6 @@ from .backoff import ExponentialBackoff
 from .badge import BadgeManager
 from .channel import PartialMessageable, _threaded_channel_factory
 from .colour import PreColour
-from .data.user import UserManager
 from .emoji import Emoji
 from .enums import (
     ApplicationCommandType,
@@ -2242,10 +2241,13 @@ class Client:
 
     async def on_interaction(self, interaction: Interaction) -> None:
         if self._enable_user_data and interaction.user:
-            userData = await UserManager.from_user(interaction.user)
-            await userData.commandCount(interaction)
-            badgeManager = BadgeManager.try_get_guild(interaction.guild)
+            userData = await interaction.user.get_data()
+            await userData.increment_command_count(interaction)
+            
+            badgeManager, isGuild = BadgeManager.try_get_guild(interaction.guild)
             await badgeManager.check_and_award_badges(interaction.user, interaction)
+            if isGuild:
+                await BadgeManager().check_and_award_badges(interaction.user, interaction)
         await self.process_application_commands(interaction)
 
     async def process_application_commands(self, interaction: Interaction) -> None:
@@ -3158,9 +3160,12 @@ class Client:
             if message.author.bot:
                 return
             try:
-                userData = await UserManager.from_user(message.author) 
+                userData = await message.author.get_data()
                 await userData.incrementMessageCount(message)
-                await BadgeManager.try_get_guild(message.guild).check_and_award_badges(message.author, message)
+                badgeManager, isGuild = BadgeManager.try_get_guild(message.guild)
+                await badgeManager.check_and_award_badges(message.author, message)
+                if isGuild:
+                    await BadgeManager().check_and_award_badges(message.author, message)
             except Exception as e:
                 self.print_error(e)
         
@@ -3176,7 +3181,10 @@ class Client:
                 receiverData.reactions_given_count += 1
                 await data.save()
                 await receiverData.save()
-                await BadgeManager.try_get_guild(reaction.message.guild).check_and_award_badges(user, reaction.message)
+                badgeManager, isGuild = BadgeManager.try_get_guild(reaction.message.guild)
+                await badgeManager.check_and_award_badges(user, reaction.message)
+                if isGuild:
+                    await BadgeManager().check_and_award_badges(user, reaction.message)
             except Exception as e:
                 self.print_error(e)
         
@@ -3189,7 +3197,10 @@ class Client:
                 data = await message.author.get_data()
                 data.deleted_messages_count += 1
                 await data.save()
-                await BadgeManager.try_get_guild(message.guild).check_and_award_badges(message.author, message)
+                badgeManager, isGuild = BadgeManager.try_get_guild(message.guild)
+                await badgeManager.check_and_award_badges(message.author, message)
+                if isGuild:
+                    await BadgeManager().check_and_award_badges(message.author, message)
             except Exception as e:
                 self.print_error(e)
                 
@@ -3202,6 +3213,9 @@ class Client:
                 data = await after.author.get_data()
                 data.edited_messages_count += 1
                 await data.save()
-                await BadgeManager.try_get_guild(after.guild).check_and_award_badges(after.author, after)
+                badgeManager, isGuild = BadgeManager.try_get_guild(after.guild)
+                await badgeManager.check_and_award_badges(after.author, after)
+                if isGuild:
+                    await BadgeManager().check_and_award_badges(after.author, after)
             except Exception as e:
                 self.print_error(e)

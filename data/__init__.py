@@ -8,6 +8,4 @@ Data for Collecting Data from the Discord API
 :license: MIT, see LICENSE for more details.
 """
 
-from .guild import *
-from .user import *
 from .models import *

@@ -6,27 +6,32 @@ Database models for the Nexon Discord bot.
 
 Models:
 - BotUser: Tracks bot-wide statistics and settings
-- User: Stores user activity and statistics
+- UserData: Stores user activity and statistics
+- MemberData: Stores user activity and statistics
 - Badge/UserBadge: Achievement system
-- Guild: Server-specific settings and data
+- GuildData: Server-specific settings and data
 - Feature system: Modular feature management
 
 Usage:
-    from nexon.data.models import User
-    user = await User.get_or_create_user(member)
+    from nexon.data.models import UserData
+    user = await UserData.get_or_create_user(member)
     await user.increment_messages()
 """
+from datetime import datetime, timedelta
 import json
 from math import floor, sqrt
+import re
 from tortoise import fields, Model
-from tortoise import exceptions
-from typing import Any, Dict, Set, Union, Optional, TYPE_CHECKING
-
+from typing import Any, Dict, List, Set, Union, Optional, TYPE_CHECKING
+from ..utils import extract_emojis
 from ..enums import ComparisonType, Rarity, RequirementType, ScopeType
 
 if TYPE_CHECKING:
-    from ..user import User as UserClass, BaseUser
+    from ..interactions import Interaction
+    from ..user import User
     from ..member import Member
+    from ..message import Message
+    from ..guild import Guild
 
 __all__ = (
     "SetJSONEncoder",
@@ -37,6 +42,7 @@ __all__ = (
     "BadgeRequirement",
     "UserBadge",
     "GuildData",
+    "MemberData",
     "Feature",
 )
 
@@ -75,7 +81,7 @@ class BotUser(Model):
     
     # Date/Time fields
     created_at                  = fields.DatetimeField(null=True)
-    last_update                 = fields.DatetimeField(auto_now=True)
+    updated_at                 = fields.DatetimeField(auto_now=True)
     
     # JSON fields
     commands_errors             = fields.JSONField(default=dict)# Dict[str, List[str]]
@@ -86,9 +92,6 @@ class BotUser(Model):
     @classmethod
     async def get_or_create_bot(cls):
         """Get the unique bot user row or create it if not exists."""
-        # try: bot_user = await cls.get(id=1)
-        # except DoesNotExist: bot_user = await cls.create(id=1)
-        # return bot_user
         return await cls.get_or_create(id=1)
     
     async def log_command(self, command_name: str) -> None:
@@ -138,13 +141,23 @@ class UserData(Model):
     links_count                 = fields.IntField(default=0)
     edited_messages_count       = fields.IntField(default=0)
     deleted_messages_count      = fields.IntField(default=0)
+    
+    # XP-related fields
     level                       = fields.IntField(default=1)
     xp                          = fields.IntField(default=0)
+    xp_multiplier               = fields.FloatField(default=1.0)
+    last_xp_gain                = fields.DatetimeField(null=True)
+    daily_xp_gained             = fields.IntField(default=0)
+    daily_xp_reset              = fields.DatetimeField(null=True)
+    activity_streak             = fields.IntField(default=0)
+    longest_streak              = fields.IntField(default=0)
+    total_xp_gained             = fields.IntField(default=0)
+    milestone_rewards           = fields.JSONField(default=dict, null=True)  # Dict[str, bool
     
     # Date/Time fields
     created_at                  = fields.DatetimeField(null=True)
     birthdate                   = fields.DateField(null=True) 
-    last_update                 = fields.DatetimeField(auto_now=True)
+    updated_at                  = fields.DatetimeField(auto_now=True)
     last_message                = fields.DatetimeField(null=True)
     
     # JSON fields with proper encoder/decoder
@@ -157,44 +170,404 @@ class UserData(Model):
     preferred_channels          : Dict[str, int]  = fields.JSONField(default=dict)  # type: ignore
     
     @classmethod
-    async def get_or_create_user(cls, user: Union['Member', 'UserClass', 'BaseUser']):
+    async def get_or_create_user(cls, user: 'User'):
         """Get the unique user row or create it if not exists."""
         return await cls.get_or_create(id=user.id, name=user.display_name, created_at=user.created_at)
     
-    async def add_xp(self, amount: int) -> Optional[dict]:
-        """
-        Add XP to a user and handle level ups with XP carryover.
+    async def set_birthdate(self, birthdate: datetime | str) -> None:
+        """Set the user's birthdate"""
+        try:
+            self.birthdate = datetime.strptime(birthdate, "%Y-%m-%d").date() if isinstance(birthdate, str) else birthdate
+            await self.save()
+        except ValueError:
+            raise ValueError("Invalid date format. Use YYYY-MM-DD.")
+    
+    async def calculate_xp_gain(self, activity_type: str, content_length: int = 0) -> int:
+        """Calculate XP gain based on activity type and various multipliers."""
+        base_xp = {
+            'message': 5,
+            'voice': 3,
+            'reaction': 1,
+            'attachment': 3,
+            'command': 2
+        }.get(activity_type, 1)
 
-        Each level requires XP based on a triangular number formula:
-            XP required for level n = 100 * n(n+1) / 2
+        # Content length bonus (for messages)
+        if activity_type == 'message' and content_length > 0:
+            base_xp += min(content_length // 50, 5)  # Up to 5 bonus XP for longer messages
 
-        Returns:
-            bool: True if the user leveled up.
-        """
+        # Time-based multiplier (more XP during less active hours)
+        hour = datetime.now().hour
+        time_multiplier = 1.5 if hour < 6 or hour > 22 else 1.0
+
+        # Streak multiplier
+        streak_multiplier = min(1.0 + (self.activity_streak * 0.1), 2.0)  # Up to 2x for streaks
+
+        # Level-based multiplier (higher levels = slightly more XP)
+        level_multiplier = 1.0 + (self.level * 0.01)  # 1% increase per level
+
+        # Calculate final XP
+        final_xp = int(base_xp * time_multiplier * streak_multiplier * 
+                      level_multiplier * self.xp_multiplier)
         
-        if amount < 0:
-            raise ValueError("XP amount must be non-negative")
+        return max(1, final_xp)  # Minimum 1 XP
 
+    async def can_gain_xp(self) -> bool:
+        """Check if user can gain XP (implements cooldown)."""
+        if not self.last_xp_gain:
+            return True
+            
+        cooldown = timedelta(seconds=30)  # 30 second cooldown
+        return datetime.now() - self.last_xp_gain > cooldown
+
+    async def update_streak(self) -> None:
+        """Update daily activity streak."""
+        now = datetime.now()
+        
+        # Reset daily XP at midnight
+        if not self.daily_xp_reset or now.date() > self.daily_xp_reset.date():
+            self.daily_xp_gained = 0
+            self.daily_xp_reset = now
+            
+            # Check if streak continues
+            if self.last_xp_gain and (now - self.last_xp_gain).days <= 1:
+                self.activity_streak += 1
+                self.longest_streak = max(self.activity_streak, self.longest_streak)
+            else:
+                self.activity_streak = 0
+
+        await self.save()
+
+    async def check_milestone_rewards(self) -> Optional[dict]:
+        """Check and award milestone rewards."""
+        milestones = {
+            'first_message': 1,
+            'level_10': 10,
+            'level_25': 25,
+            'level_50': 50,
+            'level_100': 100
+        }
+
+        reward = None
+        for milestone, level_req in milestones.items():
+            if self.level >= level_req and not self.milestone_rewards.get(milestone):
+                self.milestone_rewards[milestone] = True
+                reward = {
+                    'milestone': milestone,
+                    'xp_multiplier': 0.1,  # Permanent 10% XP boost
+                    'bonus_xp': level_req * 100  # One-time XP bonus
+                }
+                self.xp_multiplier += reward['xp_multiplier']
+                await self.add_xp(reward['bonus_xp'])
+                break
+
+        await self.save()
+        return reward
+
+    async def add_xp(self, amount: int, activity_type: str = 'other') -> Optional[dict]:
+        """Enhanced XP addition with various bonuses and checks."""
+        if not await self.can_gain_xp():
+            return None
+
+        # Update streak and daily stats
+        await self.update_streak()
+        
+        # Calculate XP with multipliers
+        actual_xp = await self.calculate_xp_gain(activity_type, amount)
+        self.daily_xp_gained += actual_xp
+        self.total_xp_gained += actual_xp
+        self.last_xp_gain = datetime.now()
+
+        # Original level up logic
         old_level = self.level
-        self.xp += amount
+        self.xp += actual_xp
         new_level = floor((sqrt(1 + (8 * self.xp / 100)) - 1) / 2) + 1
-        previous_level_xp_threshold = (100 * (new_level - 1) * new_level) // 2
+        
         if new_level > old_level:
             self.level = new_level
-            self.xp -= previous_level_xp_threshold
             level_up_info = {
                 'old_level': old_level,
                 'new_level': new_level,
-                'xp_gained': amount,
-                'xp_carried_over': self.xp
+                'xp_gained': actual_xp,
+                'streak_bonus': self.activity_streak > 0,
+                'streak_count': self.activity_streak,
+                'daily_total': self.daily_xp_gained
             }
+            
+            # Check for milestone rewards
+            milestone_reward = await self.check_milestone_rewards()
+            if milestone_reward:
+                level_up_info['milestone'] = milestone_reward
+
             await self.save()
             return level_up_info
+
         await self.save()
         return None
 
+    # Activity tracking methods
+    async def increment_messages(self, content: str) -> None:
+        """Update message-related statistics."""
+        self.total_messages += 1
+        self.character_count += len(content.replace(" ", ""))
+        self.word_count += len(content.split())
+        await self.save()
+
+    async def get_rank(self) -> int:
+        """Get user's rank based on XP."""
+        higher_users = await UserData.filter(xp__gt=self.xp).count()
+        return higher_users + 1
+
+    # Badge related methods
+    async def get_badges(self) -> list['Badge']:
+        """Get all badges earned by user."""
+        return await Badge.filter(user_badges__user_id=self.id)
+    
+    async def increment_command_count(self, interaction: 'Interaction') -> None:
+        """Increment the command usage count"""
+        if not interaction.data or interaction.data.get("type", 0) != 1:
+            return
+        command_name = interaction.data.get("name", "Unknown")
+        self.favorites_commands[command_name] = self.favorites_commands.get(command_name, 0) + 1
+        self.commands_used_count += 1
+        await self.save()
+    
+    async def generalUpdateInfo(self, user: Union['User', 'Member']):
+        """Only call this method for UserData instances"""
+        displayName = user.global_name or user.name
+        if displayName == self.name:
+            return
+        self.name = displayName
+        self.unique_names.add(displayName)
+        await self.save()
+    
+    async def track_attachment(self, type: str) -> None:
+        """Track attachment for both member and user."""
+        self.attachment_count += 1
+        if type.startswith("image"):
+            self.attachment_image_count += 1
+        elif type.startswith("video"):
+            self.attachment_video_count += 1
+        elif type.startswith("audio"):
+            self.attachment_audio_count += 1
+        else:
+            self.attachment_other_count += 1
+        await self.save()
+    async def add_mentioned_user(self, user_ids: List[int]) -> None:
+        """Add mentioned user to both member and user."""
+        self.mention_count += len(user_ids)
+        self.unique_users_mentioned.update(user_ids)
+        await self.save()
+
+    async def add_emojis(self, emojis: List[str], is_custom: bool = False) -> None:
+        """Add emoji to both member and user."""
+        if is_custom:
+            self.unique_custom_emojis_used.update(emojis)
+            self.custom_emoji_count += len(emojis)
+        else:
+            self.unique_emojis_used.update(emojis)
+            self.emoji_count += len(emojis)
+        await self.save()
+
+    async def add_domains(self, domains: List[str]) -> None:
+        """Add domain to both member and user."""
+        self.links_count += len(domains)
+        self.unique_domains.update(domains)
+        await self.save()
+
+    async def add_channel_use(self, channel: str) -> None:
+        """Track channel usage for both member and user."""
+        self.preferred_channels[channel] = self.preferred_channels.get(channel, 0) + 1
+        await self.save()
+    
+    async def add_replies(self, message: 'Message'):
+        self.replies_count += 1 if message.reference else 0
+        await self.save()
+    
+    async def add_gifs(self, gifs: List[str]):
+        self.gif_count += len(gifs)
+        await self.save()
+    async def add_attachments(self, message: 'Message'):
+        if len(message.attachments) >= 1:
+            for att in message.attachments:
+                await self.track_attachment(att.content_type if att.content_type else "other")
+    
+    
+    async def incrementMessageCount(self, message: 'Message'):
+        """Only call this method for UserData instances"""
+         
+        await self.generalUpdateInfo(message.author)
+        await self.increment_messages(message.content)
+        await self.add_channel_use(str(message.channel.id))
+        await self.add_attachments(message)
+        await self.add_mentioned_user(re.findall(r"<@(\d+)>", message.content))
+        await self.add_emojis(extract_emojis(message.content))
+        await self.add_emojis(re.findall(r"<a?:[a-zA-Z0-9_]+:(\d+)>", message.content), True)
+        await self.add_replies(message)
+        await self.add_domains(re.findall(r"https?://(?:www\.)?([a-zA-Z0-9.-]+)", message.content))
+        await self.add_gifs(re.findall(r'https?://tenor\.com/\S+', message.content))
+
+
     class Meta:
         table = "users_data"
+    
+    
+class MemberData(UserData):
+    guild = fields.ForeignKeyField("models.GuildData", related_name="members")
+    
+    @classmethod
+    async def get_or_create_user(cls, user: 'Member'):
+        """Get the unique user row or create it if not exists."""
+        guild_data, _ = await GuildData.get_or_create_guild(user.guild)
+        return await cls.get_or_create(id=user.id, name=user.display_name, created_at=user.created_at, guild=guild_data)
+    @classmethod
+    async def try_get_or_create_user(cls, user: Union['Member', 'User']):
+        """Get the unique user row or create it if not exists."""
+        if isinstance(user, User):
+            return await UserData.get_or_create_user(user)
+        return await cls.get_or_create_user(user)
+    
+    class Meta:
+        table = "members_data"
+
+    async def get_user(self) -> UserData:
+        """Get or create parent UserData."""
+        user, _ = await UserData.get_or_create(
+            id=self.id,
+            defaults={
+                "name": self.name,
+                "created_at": self.created_at,
+                "birthdate": self.birthdate
+            }
+        )
+        return user
+
+    async def generalUpdateInfo(self, user: Union['User', 'Member']):
+        """Only call this method for UserData instances"""
+        if user.display_name == self.name:
+            return
+        self.name = user.display_name
+        self.unique_names.add(user.display_name)
+        await self.save()
+
+    async def set_birthdate(self, birthdate: datetime | str) -> None:
+        """Set the user's birthdate"""
+        user = await self.get_user()
+        for model in (self, user):
+            try:
+                model.birthdate = datetime.strptime(birthdate, "%Y-%m-%d").date() if isinstance(birthdate, str) else birthdate
+                await model.save()
+            except ValueError:
+                raise ValueError("Invalid date format. Use YYYY-MM-DD.")
+
+    # Override increment methods to update both member and user
+    async def increment_messages(self, content: str) -> None:
+        """Update message statistics for both member and user."""
+        user = await self.get_user()
+        
+        # Update both models
+        for model in (self, user):
+            model.total_messages += 1
+            model.character_count += len(content.replace(" ", ""))
+            model.word_count += len(content.split())
+            await model.save()
+
+    async def track_attachment(self, type: str) -> None:
+        """Track attachment for both member and user."""
+        user = await self.get_user()
+        
+        for model in (self, user):
+            model.attachment_count += 1
+            if type.startswith("image"):
+                model.attachment_image_count += 1
+            elif type.startswith("video"):
+                model.attachment_video_count += 1
+            elif type.startswith("audio"):
+                model.attachment_audio_count += 1
+            else:
+                model.attachment_other_count += 1
+            await model.save()
+    
+    async def increment_command_count(self, interaction: 'Interaction') -> None:
+        """Increment the command usage count"""
+        user = await self.get_user()
+        for model in (self, user):
+            if not interaction.data or interaction.data.get("type", 0) != 1:
+                continue
+            command_name = interaction.data.get("name", "Unknown")
+            model.favorites_commands[command_name] = model.favorites_commands.get(command_name, 0) + 1
+            model.commands_used_count += 1
+            await model.save()
+    # Methods for updating sets and dictionaries
+    async def add_mentioned_user(self, user_ids: List[int]) -> None:
+        """Add mentioned user to both member and user."""
+        user = await self.get_user()
+        
+        for model in (self, user):
+            model.mention_count += len(user_ids)
+            model.unique_users_mentioned.update(user_ids)
+            await model.save()
+
+    async def add_emojis(self, emojis: List[str], is_custom: bool = False) -> None:
+        """Add emoji to both member and user."""
+        user = await self.get_user()
+        
+        for model in (self, user):
+            if is_custom:
+                model.unique_custom_emojis_used.update(emojis)
+                model.custom_emoji_count += len(emojis)
+            else:
+                model.unique_emojis_used.update(emojis)
+                model.emoji_count += len(emojis)
+            await model.save()
+
+    async def add_domains(self, domains: List[str]) -> None:
+        """Add domain to both member and user."""
+        user = await self.get_user()
+        
+        for model in (self, user):
+            model.links_count += len(domains)
+            model.unique_domains.update(domains)
+            await model.save()
+
+    async def add_channel_use(self, channel: str) -> None:
+        """Track channel usage for both member and user."""
+        user = await self.get_user()
+        
+        for model in (self, user):
+            model.preferred_channels[channel] = model.preferred_channels.get(channel, 0) + 1
+            await model.save()
+    
+    async def add_replies(self, message: 'Message'):
+        user = await self.get_user()
+        
+        for model in (self, user):
+            model.replies_count += 1 if message.reference else 0
+            await model.save()
+    
+    async def add_gifs(self, gifs: List[str]):
+        user = await self.get_user()
+        
+        for model in (self, user):
+            model.gif_count += len(gifs)
+            await model.save()
+    async def add_attachments(self, message: 'Message'):
+        if len(message.attachments) >= 1:
+            for att in message.attachments:
+                await self.track_attachment(att.content_type if att.content_type else "other")
+    
+    async def incrementMessageCount(self, message: 'Message'):
+        """Only call this method for UserData instances"""   
+        await self.generalUpdateInfo(message.author)
+        await self.increment_messages(message.content)
+        await self.add_channel_use(str(message.channel.id))
+        await self.add_attachments(message)
+        await self.add_mentioned_user(re.findall(r"<@(\d+)>", message.content))
+        await self.add_emojis(extract_emojis(message.content))
+        await self.add_emojis(re.findall(r"<a?:[a-zA-Z0-9_]+:(\d+)>", message.content), True)
+        await self.add_replies(message)
+        await self.add_domains(re.findall(r"https?://(?:www\.)?([a-zA-Z0-9.-]+)", message.content))
+        await self.add_gifs(re.findall(r'https?://tenor\.com/\S+', message.content))
 
 # 🏅 Badge Model
 class Badge(Model):
@@ -222,12 +595,20 @@ class Badge(Model):
     guild_id = fields.BigIntField(null=True)  # Nullable, for guild-specific badges
     rarity = fields.IntEnumField(Rarity, default=Rarity.common)  # Enum for rarity
     hidden = fields.BooleanField(default=False)  # If the badge is hidden
-
+    updated_at = fields.DatetimeField(auto_now=True)
+    
     # Relationship with BadgeRequirement
     requirements: fields.ReverseRelation["BadgeRequirement"]
     
     class Meta:
         table = "badges"
+        indexes = [
+            "name",  # Index for name field
+            "rarity",  # Index for rarity field
+        ]
+        index_together = [  # Define composite index using index_together
+            ("guild_id", "name")  # Composite index for guild_id and name
+        ]
     
     async def get_requirements(self) -> list[tuple[RequirementType, ComparisonType, str]]:
         """Retrieve a list of badge requirements.
@@ -291,6 +672,7 @@ class Badge(Model):
             await BadgeRequirement.bulk_create(requirement_objs)
         
         return badge
+
     async def to_dict(self) -> dict:
         """Convert the Badge object into a dictionary, including its requirements."""
         requirements = await self.requirements.all()  # Fetch all requirements
@@ -315,8 +697,25 @@ class Badge(Model):
             ]
         }
 
-    
+    @property
+    def rarity_color(self) -> int:
+        """Get color code for badge rarity."""
+        colors = {
+            Rarity.common: 0x808080,     # Gray
+            Rarity.uncommon: 0x00ff00,   # Green
+            Rarity.rare: 0x0000ff,       # Blue
+            Rarity.epic: 0x800080,       # Purple
+            Rarity.legendary: 0xffd700,  # Gold
+        }
+        return colors.get(self.rarity, 0x000000)
 
+    async def award_to(self, user_id: int) -> 'UserBadge':
+        """Award badge to user if they don't already have it."""
+        existing = await UserBadge.get_or_none(user_id=user_id, badge=self)
+        if existing:
+            raise ValueError("User already has this badge")
+            
+        return await UserBadge.create(user_id=user_id, badge=self)
 
 # 📝 Badge Requirement Model (For tracking badge conditions)
 class BadgeRequirement(Model):
@@ -355,6 +754,34 @@ class BadgeRequirement(Model):
             return user_value < value
         return False
 
+    # async def get_user_progress(self, user: 'UserData') -> tuple[int, int]:
+    #     """Get user's progress towards this requirement.
+        
+    #     Returns:
+    #         Tuple of (current_value, target_value)
+    #     """
+    #     target = int(self.value)
+    #     current = 0
+        
+    #     if self.type == RequirementType.MESSAGES:
+    #         current = user.total_messages
+    #     elif self.type == RequirementType.LEVEL:
+    #         current = user.level
+    #     # Add more requirement types as needed
+            
+    #     return current, target
+
+    def format_requirement(self) -> str:
+        """Format requirement as human readable string."""
+        comp_symbols = {
+            ComparisonType.GREATER_EQUAL: "≥",
+            ComparisonType.LESS_EQUAL: "≤",
+            ComparisonType.EQUAL: "=",
+            ComparisonType.GREATER: ">",
+            ComparisonType.LESS: "<"
+        }
+        return f"{self.type.name.title()} {comp_symbols[self.comparison]} {self.value}"
+
 class UserBadge(Model):
     """User badge model.
     
@@ -382,8 +809,7 @@ class GuildData(Model):
         name (str): Guild name
         created_at (datetime): Guild creation timestamp
         total_messages (int): Total messages in the guild
-        last_update (datetime): Last update timestamp
-        features_enabled (dict): Enabled features in the guild
+        updated_at (datetime): Last update timestamp
         
     .. versionadded:: Nexon 0.3.0
     """
@@ -392,20 +818,19 @@ class GuildData(Model):
     name                        = fields.CharField(max_length=100)
     created_at                  = fields.DatetimeField()
     
+    members = fields.ReverseRelation['UserData']
+    
     # Integer fields
     total_messages              = fields.IntField(default=0)
     
     # Date/Time fields
-    last_update                 = fields.DatetimeField(auto_now=True)
-    
-    # JSON fields
-    features_enabled            = fields.JSONField(default=dict)
+    updated_at                 = fields.DatetimeField(auto_now=True)
     
     class Meta:
         table = "guilds_data"
     
     @classmethod
-    async def get_or_create_guild(cls, guild):
+    async def get_or_create_guild(cls, guild: 'Guild'):
         """Get the unique guild row or create it if not exists."""
         return await cls.get_or_create(
             id=guild.id,
