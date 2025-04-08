@@ -901,10 +901,21 @@ class Feature(Model):
 
     async def set_setting(self, key: str, value: Any) -> None:
         """Set a feature setting."""
+        self.settings["settings"][key] = value
+        await self.save()
+
+    def get_setting(self, key: Optional[str] = None, default: Any = {}) -> Any:    
+        """Get a feature setting."""
+        if key is None:
+            return self.settings.get("settings", default)
+        return self.settings["settings"].get(key, default)
+    
+    async def set_global(self, key: str, value: Any) -> None:
+        """Set a feature setting."""
         self.settings[key] = value
         await self.save()
 
-    def get_setting(self, key: str, default: Any = None) -> Any:
+    def get_global(self, key: str, default: Any = {}) -> Any:
         """Get a feature setting."""
         return self.settings.get(key, default)
 

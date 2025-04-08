@@ -418,6 +418,7 @@ class Client:
                 markup=True,
                 rich_tracebacks=True,
                 level=logger_level,
+                show_time=False,
             )
             for name in [__name__, "bot"]:
                 logger = logging.getLogger(name)
