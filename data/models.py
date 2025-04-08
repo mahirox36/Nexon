@@ -673,7 +673,7 @@ class Badge(Model):
         
         return badge
 
-    async def to_dict(self) -> dict:
+    async def to_dict(self) -> Dict[str, Union[str, int, bool, List[Dict[str, str]]]]:
         """Convert the Badge object into a dictionary, including its requirements."""
         requirements = await self.requirements.all()  # Fetch all requirements
 
@@ -865,7 +865,7 @@ class Feature(Model):
 
     class Meta:
         table = "features"
-        unique_together = (("name", "scope_type", "scope_id"),)
+        unique_together = [("name", "scope_type", "scope_id")]
 
     @classmethod
     async def get_guild_feature(cls, guild_id: int, feature_name: str, default: Any = {}) -> 'Feature':
@@ -928,3 +928,15 @@ class Feature(Model):
     async def delete_class(self):
         """Delete everything"""
         await self.delete()
+    
+    async def to_dict(self):
+        """Convert the Feature object into a dictionary."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "scope_type": self.scope_type.name,
+            "scope_id": self.scope_id,
+            "settings": self.settings,
+            "enabled": self.enabled,
+            "updated_at": self.updated_at.isoformat(),
+        }

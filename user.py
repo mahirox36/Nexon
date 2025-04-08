@@ -540,5 +540,5 @@ class User(BaseUser, abc.Messageable):
 
         .. versionadded:: Nexon 0.3.0
         """
-        user, _ = await UserData.get_or_create(id=self.id)
+        user, _ = await UserData.get_or_create_user(self)
         return user
