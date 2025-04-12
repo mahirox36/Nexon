@@ -44,6 +44,7 @@ __all__ = (
     "GuildData",
     "MemberData",
     "Feature",
+    "MetricsCollector",
 )
 
 class SetJSONEncoder(json.JSONEncoder):
@@ -141,6 +142,7 @@ class UserData(Model):
     links_count                 = fields.IntField(default=0)
     edited_messages_count       = fields.IntField(default=0)
     deleted_messages_count      = fields.IntField(default=0)
+    longest_message             = fields.IntField(default=0)
     
     # XP-related fields
     level                       = fields.IntField(default=1)
@@ -168,6 +170,7 @@ class UserData(Model):
     unique_domains              : Set[str]   = fields.JSONField(default=lambda: {'__type__': 'set', 'items': []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder)) # type: ignore
     favorites_commands          : Dict[str, int]  = fields.JSONField(default=dict)  # type: ignore
     preferred_channels          : Dict[str, int]  = fields.JSONField(default=dict)  # type: ignore
+    last_command_use             : Dict[str, float]  = fields.JSONField(default=dict, null=True)  # type: ignore
     
     @classmethod
     async def get_or_create_user(cls, user: 'User'):
@@ -329,6 +332,7 @@ class UserData(Model):
             return
         command_name = interaction.data.get("name", "Unknown")
         self.favorites_commands[command_name] = self.favorites_commands.get(command_name, 0) + 1
+        self.last_command_use[command_name] = datetime.now().timestamp()
         self.commands_used_count += 1
         await self.save()
     
@@ -406,6 +410,8 @@ class UserData(Model):
         await self.add_replies(message)
         await self.add_domains(re.findall(r"https?://(?:www\.)?([a-zA-Z0-9.-]+)", message.content))
         await self.add_gifs(re.findall(r'https?://tenor\.com/\S+', message.content))
+        if len(message.content) > self.longest_message:
+            self.longest_message = len(message.content)
 
 
     class Meta:
@@ -870,11 +876,11 @@ class Feature(Model):
     @classmethod
     async def get_guild_feature(cls, guild_id: int, feature_name: str, default: Any = {}) -> 'Feature':
         """Get a feature for a specific guild."""
-        feature,_ = await cls.get_or_create(
+        feature, _ = await cls.get_or_create(
             name=feature_name,
             scope_type=ScopeType.GUILD,
             scope_id=guild_id,
-            defaults={'settings': default}
+            defaults={'settings': {"settings": default}}
         )
         return feature
 
@@ -885,7 +891,7 @@ class Feature(Model):
             name=feature_name,
             scope_type=ScopeType.USER,
             scope_id=user_id,
-            defaults={'settings': default}
+            defaults={'settings': {"settings": default}}
         )
         return feature
 
@@ -895,17 +901,21 @@ class Feature(Model):
         feature, _ = await cls.get_or_create(
             name=feature_name,
             scope_type=ScopeType.GLOBAL,
-            defaults={'settings': default}
+            defaults={'settings': {"settings": default}}
         )
         return feature
 
     async def set_setting(self, key: str, value: Any) -> None:
         """Set a feature setting."""
+        if "settings" not in self.settings:
+            self.settings["settings"] = {}
         self.settings["settings"][key] = value
         await self.save()
 
     def get_setting(self, key: Optional[str] = None, default: Any = {}) -> Any:    
         """Get a feature setting."""
+        if "settings" not in self.settings:
+            self.settings["settings"] = {}
         if key is None:
             return self.settings.get("settings", default)
         return self.settings["settings"].get(key, default)
@@ -950,4 +960,78 @@ class Feature(Model):
             "settings": self.settings,
             "enabled": self.enabled,
             "updated_at": self.updated_at.isoformat(),
+        }
+
+class MetricsCollector(Model):
+    """Stores historical metrics data for system and bot statistics.
+    
+    Attributes:
+        timestamp (datetime): When the metrics were collected
+        cpu_usage (float): CPU usage percentage
+        memory_usage (float): Memory usage percentage
+        memory_total (int): Total system memory
+        disk_usage (float): Disk usage percentage
+        bot_latency (float): Bot latency in ms
+        guild_count (int): Number of guilds
+        user_count (int): Total number of users
+        voice_connections (int): Active voice connections
+        commands_processed (int): Commands processed in this interval
+    """
+    id = fields.IntField(pk=True)
+    timestamp = fields.DatetimeField(auto_now_add=True)
+    
+    # System metrics
+    cpu_usage = fields.FloatField()
+    memory_usage = fields.FloatField()
+    memory_total = fields.BigIntField()
+    disk_usage = fields.FloatField()
+    thread_count = fields.IntField()
+    
+    # Bot metrics
+    bot_latency = fields.FloatField()
+    guild_count = fields.IntField()
+    user_count = fields.IntField()
+    channel_count = fields.IntField()
+    voice_connections = fields.IntField()
+    commands_processed = fields.IntField()
+    messages_sent = fields.IntField()
+    errors_encountered = fields.IntField()
+    
+    class Meta:
+        table = "metrics_history"
+        
+    @classmethod
+    async def add_metrics(cls, system_stats: dict, bot_stats: dict) -> None:
+        """Add new metrics entry"""
+        await cls.create(
+            cpu_usage=system_stats['cpu_usage'],
+            memory_usage=system_stats['memory_usage'],
+            memory_total=system_stats['memory_total'],
+            disk_usage=system_stats['disk_usage'],
+            thread_count=system_stats['thread_count'],
+            bot_latency=bot_stats['latency'],
+            guild_count=bot_stats['guild_count'],
+            user_count=bot_stats['user_count'],
+            channel_count=bot_stats['channel_count'],
+            voice_connections=bot_stats['voice_connections'],
+            commands_processed=bot_stats['commands_processed'],
+            messages_sent=bot_stats['messages_sent'],
+            errors_encountered=bot_stats['errors_encountered']
+        )
+    
+    @classmethod
+    async def get_historical_data(cls, hours: int = 24) -> dict:
+        """Get historical metrics for the specified time period"""
+        cutoff = datetime.now() - timedelta(hours=hours)
+        metrics = await cls.filter(timestamp__gte=cutoff).order_by('timestamp')
+        
+        return {
+            'timestamps': [m.timestamp.timestamp() for m in metrics],
+            'cpu_usage': [m.cpu_usage for m in metrics],
+            'memory_usage': [m.memory_usage for m in metrics],
+            'bot_latency': [m.bot_latency for m in metrics],
+            'guild_count': [m.guild_count for m in metrics],
+            'user_count': [m.user_count for m in metrics],
+            'commands_processed': [m.commands_processed for m in metrics],
+            'messages_sent': [m.messages_sent for m in metrics]
         }
