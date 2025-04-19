@@ -175,7 +175,14 @@ class UserData(Model):
     @classmethod
     async def get_or_create_user(cls, user: 'User'):
         """Get the unique user row or create it if not exists."""
-        return await cls.get_or_create(id=user.id, name=user.display_name, created_at=user.created_at)
+        try:
+            return await cls.get(id=user.id), False
+        except:
+            return await cls.create(
+                id=user.id,
+                name=user.display_name,
+                created_at=user.created_at
+            ), True
     
     async def set_birthdate(self, birthdate: datetime | str) -> None:
         """Set the user's birthdate"""
@@ -425,7 +432,15 @@ class MemberData(UserData):
     async def get_or_create_user(cls, user: 'Member'):
         """Get the unique user row or create it if not exists."""
         guild_data, _ = await GuildData.get_or_create_guild(user.guild)
-        return await cls.get_or_create(id=user.id, name=user.display_name, created_at=user.created_at, guild=guild_data)
+        try:
+            return await cls.get(id=user.id, guild=guild_data), False
+        except:
+            return await cls.create(
+                id=user.id,
+                name=user.display_name,
+                guild=guild_data,
+                created_at=user.created_at
+            ), True
     @classmethod
     async def try_get_or_create_user(cls, user: Union['Member', 'User']):
         """Get the unique user row or create it if not exists."""
