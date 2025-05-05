@@ -311,7 +311,6 @@ class BadgeManager:
         context: Optional[Union[Message, Interaction]] = None
     ) -> List[Badge]:
         """Check if the user has earned any new badges and award them"""
-        logger.info(f"Checking for new badges for user {user.id}")
         unowned_badges = await self.get_user_unowned_badges(user.id)
         earned_badges = []
         userData = await user.get_data()
@@ -336,11 +335,9 @@ class BadgeManager:
         context: Optional[Union[Message, Interaction]] = None
     ) -> List[Badge]:
         """Check and award badges to the user"""
-        logger.info(f"Checking and awarding badges for user {user.id}")
         earned_badges = await self.check_for_new_badges(user, context)
         
         for badge in earned_badges:
             await self.award_badge(user, badge.id)
-            logger.info(f"Badge {badge.name} awarded to user {user.id}")
         
         return earned_badges
