@@ -52,6 +52,7 @@ from .backoff import ExponentialBackoff
 from .badge import BadgeManager
 from .channel import PartialMessageable, _threaded_channel_factory
 from .colour import PreColour
+from .data.models import BotUser
 from .emoji import Emoji
 from .enums import (
     ApplicationCommandType,
@@ -86,7 +87,7 @@ from .webhook import Webhook
 from .widget import Widget
 
 if TYPE_CHECKING:
-    from nexon.types.checks import ApplicationCheck, ApplicationHook
+    from .types.checks import ApplicationCheck, ApplicationHook
 
     from .abc import GuildChannel, PrivateChannel, Snowflake, SnowflakeTime
     from .application_command import ClientCog, SlashApplicationSubcommand
@@ -3180,6 +3181,8 @@ class Client:
                 await badgeManager.check_and_award_badges(message.author, message)
                 if isGuild:
                     await BadgeManager().check_and_award_badges(message.author, message)
+                
+                await BotUser.log_message()
             except Exception as e:
                 self.print_error(e)
         

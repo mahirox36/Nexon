@@ -95,13 +95,32 @@ class BotUser(Model):
         """Get the unique bot user row or create it if not exists."""
         return await cls.get_or_create(id=1)
     
-    async def log_command(self, command_name: str) -> None:
+    @classmethod
+    async def log_command(cls, command_name: str) -> None:
         """Log a command execution, updating usage statistics."""
-        self.commands_processed += 1
-        if command_name not in self.features_used:
-            self.features_used[command_name] = 0
-        self.features_used[command_name] += 1
-        await self.save()
+        bot, _ = await cls.get_or_create_bot()
+        bot.commands_processed += 1
+        if command_name not in bot.features_used:
+            bot.features_used[command_name] = 0
+        bot.features_used[command_name] += 1
+        await bot.save()
+    
+    @classmethod
+    async def log_error(cls, error_message: str) -> None:
+        """Log an error message, updating error statistics."""
+        bot, _ = await cls.get_or_create_bot()
+        bot.errors_encountered += 1
+        if "errors" not in bot.commands_errors:
+            bot.commands_errors["errors"] = []
+        bot.commands_errors["errors"].append(error_message)
+        await bot.save()
+    
+    @classmethod
+    async def log_message(cls) -> None:
+        """Log a message, updating message statistics."""
+        bot, _ = await cls.get_or_create_bot()
+        bot.total_messages += 1
+        await bot.save()
 
 class UserData(Model):
     """User activity and statistics tracker.
@@ -344,6 +363,7 @@ class UserData(Model):
         self.last_command_use[command_name] = datetime.now().timestamp()
         self.commands_used_count += 1
         await self.save()
+        await BotUser.log_command(command_name)
     
     async def generalUpdateInfo(self, user: Union['User', 'Member']):
         """Only call this method for UserData instances"""
@@ -521,6 +541,7 @@ class MemberData(UserData):
             model.favorites_commands[command_name] = model.favorites_commands.get(command_name, 0) + 1
             model.commands_used_count += 1
             await model.save()
+        await BotUser.log_command(command_name)
     # Methods for updating sets and dictionaries
     async def add_mentioned_user(self, user_ids: List[int]) -> None:
         """Add mentioned user to both member and user."""
