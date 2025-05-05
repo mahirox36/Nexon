@@ -3173,6 +3173,7 @@ class Client:
         async def on_message(message: 'Message') -> None:
             """Default message handler that tracks user data if enabled"""
             if message.author.bot:
+                await BotUser.log_message()
                 return
             try:
                 userData = await message.author.get_data()
@@ -3182,7 +3183,7 @@ class Client:
                 if isGuild:
                     await BadgeManager().check_and_award_badges(message.author, message)
                 
-                await BotUser.log_message()
+                
             except Exception as e:
                 self.print_error(e)
         
