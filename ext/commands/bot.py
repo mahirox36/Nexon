@@ -1439,7 +1439,6 @@ class Bot(BotBase, nexon.Client):
         .. versionadded:: 1.7
         
     enable_logger_console: :class:`bool`
-        Whether to enable logging to the console. and to get the logger use `logging.getLogger("bot")`
         Defaults to ``False``
     
         .. versionadded:: Nexon 0.2.2

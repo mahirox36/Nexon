@@ -339,6 +339,8 @@ class UserData(Model):
             return
         command_name = interaction.data.get("name", "Unknown")
         self.favorites_commands[command_name] = self.favorites_commands.get(command_name, 0) + 1
+        if self.last_command_use is None:
+            self.last_command_use = {}
         self.last_command_use[command_name] = datetime.now().timestamp()
         self.commands_used_count += 1
         await self.save()
@@ -816,11 +818,27 @@ class UserBadge(Model):
     """
     id = fields.IntField(pk=True)
     user_id = fields.BigIntField()
-    badge = fields.ForeignKeyField("models.Badge", related_name="user_badges", on_delete=fields.CASCADE)
+    badge: fields.ForeignKeyRelation["Badge"] = fields.ForeignKeyField("models.Badge", related_name="user_badges", on_delete=fields.CASCADE)
     obtained_at = fields.DatetimeField(auto_now_add=True)
     
     class Meta:
         table = "user_badges"
+    
+    from typing import Sequence
+
+    @classmethod
+    async def get_user_badges(cls, user_id: int) -> Sequence['UserBadge']:
+        """Get all badges for a specific user."""
+        return await cls.filter(user_id=user_id).prefetch_related("badge").all()
+    
+    async def to_dict(self) -> Dict[str, Union[int, str]]:
+        """Convert the UserBadge object into a dictionary."""
+        badge_dict = await self.badge.to_dict()
+        combined_dict = {
+            **badge_dict,
+            "obtained_at": self.obtained_at.isoformat(),  # Convert datetime to string
+        }
+        return combined_dict
 
 class GuildData(Model):
     """Guild-specific settings and data.
@@ -934,6 +952,11 @@ class Feature(Model):
         if key is None:
             return self.settings.get("settings", default)
         return self.settings["settings"].get(key, default)
+    
+    async def reset_settings(self) -> None:
+        """Reset all settings to default."""
+        self.settings["settings"] = {}
+        await self.save()
     
     async def set_global(self, key: str, value: Any) -> None:
         """Set a feature setting."""

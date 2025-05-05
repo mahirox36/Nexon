@@ -183,7 +183,8 @@ class BadgeManager:
 
     async def get_user_unowned_badges(self, user_id: int) -> List[Badge]:
         owned_badge_ids = await UserBadge.filter(user_id=user_id).values_list("badge_id", flat=True)
-        return await Badge.filter(Q(id__in=owned_badge_ids)).all()
+        query = Badge.filter(guild_id=self.guild_id if self.guild_id is not None else None)
+        return await query.filter(~Q(id__in=owned_badge_ids)).all()
 
     async def get_user_hidden_badges(self, user_id: int) -> List[Badge]:
         owned_badge_ids = await UserBadge.filter(user_id=user_id).values_list("badge_id", flat=True)
@@ -310,12 +311,13 @@ class BadgeManager:
         context: Optional[Union[Message, Interaction]] = None
     ) -> List[Badge]:
         """Check if the user has earned any new badges and award them"""
-        logger.debug(f"Checking for new badges for user {user.id}")
+        logger.info(f"Checking for new badges for user {user.id}")
         unowned_badges = await self.get_user_unowned_badges(user.id)
         earned_badges = []
         userData = await user.get_data()
         
         for badge in unowned_badges:
+            await badge.fetch_related("requirements")
             if not badge.requirements:
                 continue
             all_requirements_met = True
@@ -334,7 +336,7 @@ class BadgeManager:
         context: Optional[Union[Message, Interaction]] = None
     ) -> List[Badge]:
         """Check and award badges to the user"""
-        logger.debug(f"Checking and awarding badges for user {user.id}")
+        logger.info(f"Checking and awarding badges for user {user.id}")
         earned_badges = await self.check_for_new_badges(user, context)
         
         for badge in earned_badges:

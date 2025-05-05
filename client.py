@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import signal
 import sys
 import traceback
@@ -280,7 +281,6 @@ class Client:
         .. versionadded:: 2.3
     
     enable_logger_console: :class:`bool`
-        Whether to enable logging to the console. and to get the logger use `logging.getLogger("bot")`
         Defaults to ``False``
     
         .. versionadded:: Nexon 0.1.2
@@ -410,25 +410,38 @@ class Client:
             "logging.level.warning": f"{PreColour.warn}",
             "logging.level.error": f"{PreColour.error}",
             "logging.level.critical": f"{PreColour.critical} bold",
-        })
+            })
             console = Console(theme=custom_theme, force_terminal=True)
-            
+
             rich_handler = RichHandler(
+                level=logger_level,
                 console=console,
                 markup=True,
                 rich_tracebacks=True,
-                level=logger_level,
                 show_time=False,
             )
-            for name in [__name__, "bot"]:
-                logger = logging.getLogger(name)
-                logger.setLevel(logger_level)
-                logger.handlers.clear()
+            root_logger = logging.getLogger()
+            root_logger.setLevel(logging.DEBUG)
+            root_logger.handlers.clear()
 
-                logger.addHandler(rich_handler)
-                logger.propagate = False
+            # Add RichHandler for console logging (all levels)
+            root_logger.addHandler(rich_handler)
+
+            # Add advanced file handler for logging to logs/
+            os.makedirs("logs", exist_ok=True)
+            file_handler = logging.FileHandler("logs/latest.log", mode="a", encoding="utf-8")
+            file_handler.setLevel(logging.DEBUG)
+            file_formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
+            file_handler.setFormatter(file_formatter)
+            root_logger.addHandler(file_handler)
+
+            root_logger.propagate = False
             
         if enable_user_data:
+            root_logger.debug("User data saving and loading enabled.")
+            _log.debug("User data saving and loading enabled.")
             self._add_data_collection()
 
         if VoiceClient.warn_nacl:
