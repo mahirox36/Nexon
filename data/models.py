@@ -11,6 +11,7 @@ Models:
 - Badge/UserBadge: Achievement system
 - GuildData: Server-specific settings and data
 - Feature system: Modular feature management
+- AIPersonality: Stores AI personality traits and states
 
 Usage:
     from nexon.data.models import UserData
@@ -45,6 +46,7 @@ __all__ = (
     "MemberData",
     "Feature",
     "MetricsCollector",
+    "AIPersonality",
 )
 
 class SetJSONEncoder(json.JSONEncoder):
@@ -1094,3 +1096,208 @@ class MetricsCollector(Model):
             'commands_processed': [m.commands_processed for m in metrics],
             'messages_sent': [m.messages_sent for m in metrics]
         }
+
+class AIPersonality(Model):
+    """Stores AI personality traits and relationship data.
+    
+    This model stores the AI's personality state including core traits,
+    learned preferences, relationship dynamics, and emotional memory.
+    
+    Attributes:
+        id (int): AI personality entry ID
+        name (str): Name of this personality profile
+        core_traits (dict): Core personality traits (openness, conscientiousness, etc.)
+        learned_preferences (dict): Dictionary of learned user preferences
+        relationship_dynamics (dict): Dictionary of relationship states with users
+        emotional_memory (list): List of significant emotional interactions
+        mood_tracker (dict): Current and recent emotional states
+        creation_date (datetime): When this personality was created
+        last_update (datetime): Last time this personality was updated
+        
+    """
+    id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=100, default="Default")
+    core_traits = fields.JSONField(default=lambda: {
+        "openness": 0.85,
+        "conscientiousness": 0.9,
+        "extraversion": 0.75,
+        "agreeableness": 0.85,
+        "stability": 0.8,
+        "curiosity": 0.9,
+        "empathy": 0.95,
+        "adaptability": 0.85,
+    })
+    learned_preferences = fields.JSONField(default=dict)  # User-specific preferences
+    relationship_dynamics = fields.JSONField(default=dict)  # User relationship states
+    emotional_memory = fields.JSONField(default=list)  # Important emotional moments
+    mood_tracker = fields.JSONField(default=lambda: {
+        "current_mood": "relaxed", 
+        "mood_since": datetime.now().timestamp(),
+        "recent_moods": []
+    })
+    creation_date = fields.DatetimeField(auto_now_add=True)
+    last_update = fields.DatetimeField(auto_now=True)
+    
+    class Meta:
+        table = "ai_personality"
+    
+    @classmethod
+    async def get_default(cls):
+        """Get or create default personality profile."""
+        profile, created = await cls.get_or_create(name="Default")
+        if created:
+            # Initialize with advanced emotional intelligence traits
+            profile.emotional_memory = [
+                {
+                    "type": "initial_creation",
+                    "timestamp": datetime.now().timestamp(),
+                    "description": "I was first activated and began learning about the world.",
+                    "mood": "curious",
+                    "intensity": 0.8
+                }
+            ]
+            await profile.save()
+        return profile
+    
+    async def update_mood(self, new_mood: str, intensity: float = 0.5, trigger: str = "general interaction"):
+        """Update the AI's current mood.
+        
+        Args:
+            new_mood (str): The new mood state
+            intensity (float): Intensity of the mood (0.0-1.0)
+            trigger (str): What triggered this mood change
+        """
+        current_time = datetime.now().timestamp()
+        
+        # Store previous mood in history
+        if self.mood_tracker["current_mood"] != new_mood:
+            previous_mood = {
+                "mood": self.mood_tracker["current_mood"],
+                "started": self.mood_tracker["mood_since"],
+                "ended": current_time,
+                "duration": current_time - self.mood_tracker["mood_since"],
+                "trigger": trigger
+            }
+            
+            # Keep only recent moods (last 10)
+            recent_moods = self.mood_tracker.get("recent_moods", [])
+            recent_moods.append(previous_mood)
+            if len(recent_moods) > 10:
+                recent_moods = recent_moods[-10:]
+                
+            # Update mood tracker
+            self.mood_tracker = {
+                "current_mood": new_mood,
+                "mood_since": current_time,
+                "intensity": intensity,
+                "trigger": trigger,
+                "recent_moods": recent_moods
+            }
+            await self.save()
+    
+    async def create_emotional_memory(self, user_id: int, event_type: str, description: str, 
+                                     impact: float, associated_mood: Optional[str] = None):
+        """Store a significant emotional memory.
+        
+        Args:
+            user_id (int): ID of the user involved
+            event_type (str): Type of emotional event
+            description (str): Description of what happened
+            impact (float): How significant this event is (-1.0 to 1.0)
+            associated_mood (str, optional): Mood associated with this memory
+        """
+        # Create the memory entry
+        memory = {
+            "user_id": user_id,
+            "type": event_type,
+            "timestamp": datetime.now().timestamp(),
+            "description": description,
+            "impact": impact,
+            "mood": associated_mood or self.mood_tracker["current_mood"]
+        }
+        
+        # Add to emotional memories
+        if not isinstance(self.emotional_memory, list):
+            self.emotional_memory = []
+        
+        self.emotional_memory.append(memory)
+        
+        # Limit memory size
+        if len(self.emotional_memory) > 100:
+            # Sort by impact and keep most significant
+            self.emotional_memory = sorted(self.emotional_memory, key=lambda x: abs(x["impact"]), reverse=True)[:100]
+        
+        await self.save()
+    
+    async def update_relationship(self, user_id: int, familiarity_change: float = 0.01, 
+                                 trust_change: float = 0, affinity_change: float = 0):
+        """Update relationship dynamics with a user.
+        
+        Args:
+            user_id (int): ID of the user
+            familiarity_change (float): Change in familiarity (-1.0 to 1.0)
+            trust_change (float): Change in trust (-1.0 to 1.0)
+            affinity_change (float): Change in affinity/liking (-1.0 to 1.0)
+        """
+        user_id_str = str(user_id)
+        
+        # Initialize relationship if it doesn't exist
+        if not self.relationship_dynamics.get(user_id_str):
+            self.relationship_dynamics[user_id_str] = {
+                "familiarity": 0.1,
+                "trust": 0.5,
+                "affinity": 0.5,
+                "first_interaction": datetime.now().timestamp(),
+                "last_interaction": datetime.now().timestamp(),
+                "interaction_count": 0,
+                "significant_interactions": []
+            }
+        
+        # Update relationship values
+        relationship = self.relationship_dynamics[user_id_str]
+        relationship["familiarity"] = min(1.0, max(0.0, relationship["familiarity"] + familiarity_change))
+        relationship["trust"] = min(1.0, max(0.0, relationship["trust"] + trust_change))
+        relationship["affinity"] = min(1.0, max(0.0, relationship["affinity"] + affinity_change))
+        relationship["last_interaction"] = datetime.now().timestamp()
+        relationship["interaction_count"] += 1
+        
+        await self.save()
+    
+    def get_user_relationship(self, user_id: int) -> dict:
+        """Get relationship data for a specific user.
+        
+        Args:
+            user_id (int): ID of the user
+            
+        Returns:
+            dict: Relationship data or default values if not found
+        """
+        user_id_str = str(user_id)
+        default_relationship = {
+            "familiarity": 0.1,
+            "trust": 0.5,
+            "affinity": 0.5,
+            "first_interaction": datetime.now().timestamp(),
+            "last_interaction": datetime.now().timestamp(),
+            "interaction_count": 0
+        }
+        
+        return self.relationship_dynamics.get(user_id_str, default_relationship)
+    
+    async def learn_preference(self, user_id: int, preference_type: str, preference_value: Any):
+        """Learn and store a user preference.
+        
+        Args:
+            user_id (int): ID of the user
+            preference_type (str): Type of preference (topics, style, etc)
+            preference_value (Any): The preference value to store
+        """
+        user_id_str = str(user_id)
+        
+        # Initialize preferences if they don't exist
+        if not self.learned_preferences.get(user_id_str):
+            self.learned_preferences[user_id_str] = {}
+        
+        # Store the preference
+        self.learned_preferences[user_id_str][preference_type] = preference_value
+        await self.save()
