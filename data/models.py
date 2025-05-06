@@ -252,20 +252,34 @@ class UserData(Model):
         return datetime.now() - self.last_xp_gain > cooldown
 
     async def update_streak(self) -> None:
-        """Update daily activity streak."""
+        """
+        Update the user's daily activity streak and reset daily XP if needed.
+
+        - Resets daily XP at midnight (based on local server time).
+        - Increments streak if user was active yesterday.
+        - Resets streak if user missed a day.
+        - Updates longest streak if broken.
+        """
         now = datetime.now()
-        
-        # Reset daily XP at midnight
-        if not self.daily_xp_reset or now.date() > self.daily_xp_reset.date():
+        reset_needed = (
+            not self.daily_xp_reset or now.date() > self.daily_xp_reset.date()
+        )
+
+        if reset_needed:
+            # Determine if streak should increment or reset
+            if self.last_xp_gain:
+                days_since_last = (now.date() - self.last_xp_gain.date()).days
+                if days_since_last == 1:
+                    self.activity_streak += 1
+                elif days_since_last > 1:
+                    self.activity_streak = 1
+                # If days_since_last == 0, user is active today, streak unchanged
+            else:
+                self.activity_streak = 1  # First activity ever
+
+            self.longest_streak = max(self.activity_streak, self.longest_streak)
             self.daily_xp_gained = 0
             self.daily_xp_reset = now
-            
-            # Check if streak continues
-            if self.last_xp_gain and (now - self.last_xp_gain).days <= 1:
-                self.activity_streak += 1
-                self.longest_streak = max(self.activity_streak, self.longest_streak)
-            else:
-                self.activity_streak = 0
 
         await self.save()
 
