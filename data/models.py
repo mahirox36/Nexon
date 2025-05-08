@@ -464,19 +464,18 @@ class UserData(Model):
     
     
 class MemberData(UserData):
-    guild = fields.ForeignKeyField("models.GuildData", related_name="members")
+    guild_id = fields.BigIntField()
 
     @classmethod
     async def get_or_create_user(cls, user: 'Member'):
         """Get the unique user row or create it if not exists."""
-        guild_data, _ = await GuildData.get_or_create_guild(user.guild)
         try:
-            return await cls.get(id=user.id, guild=guild_data), False
+            return await cls.get(id=user.id, guild_id=user.guild.id), False
         except:
             return await cls.create(
                 id=user.id,
                 name=user.display_name,
-                guild=guild_data,
+                guild_id=user.guild.id,
                 created_at=user.created_at
             ), True
     @classmethod
@@ -894,8 +893,6 @@ class GuildData(Model):
     id                          = fields.BigIntField(pk=True)
     name                        = fields.CharField(max_length=100)
     created_at                  = fields.DatetimeField()
-    
-    members = fields.ReverseRelation['UserData']
     
     # Integer fields
     total_messages              = fields.IntField(default=0)
