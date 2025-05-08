@@ -461,6 +461,7 @@ class UserData(Model):
 
     class Meta:
         table = "users_data"
+        unique_together = [("id", "guild")] 
     
     
 class MemberData(UserData):
@@ -488,6 +489,7 @@ class MemberData(UserData):
     
     class Meta:
         table = "members_data"
+        unique_together = [("id", "guild")] 
 
     async def get_user(self) -> UserData:
         """Get or create parent UserData."""
