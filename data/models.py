@@ -464,6 +464,7 @@ class UserData(Model):
     
     
 class MemberData(UserData):
+    id = fields.BigIntField()
     guild_id = fields.BigIntField()
 
     @classmethod
@@ -487,7 +488,7 @@ class MemberData(UserData):
 
     class Meta:
         table = "members_data"
-        unique_together = ["id", "guild_id"]  # Ensure id and guild are unique together
+        unique_together = [("id", "guild_id")] 
 
     async def get_user(self) -> UserData:
         """Get or create parent UserData."""
