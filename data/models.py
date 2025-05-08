@@ -461,7 +461,6 @@ class UserData(Model):
 
     class Meta:
         table = "users_data"
-        unique_together = [("id", "guild")] 
     
     
 class MemberData(UserData):
