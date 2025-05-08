@@ -139,7 +139,7 @@ class UserData(Model):
     .. versionadded:: Nexon 0.3.0
     """
     # Required fields
-    id                          = fields.BigIntField(pk=True, unique=True)
+    id                          = fields.BigIntField()
     name                        = fields.CharField(max_length=32)
     
     # Integer fields
@@ -464,19 +464,19 @@ class UserData(Model):
     
     
 class MemberData(UserData):
-    id = fields.BigIntField()
-    guild_id = fields.BigIntField()
-
+    guild = fields.ForeignKeyField("models.GuildData", related_name="members")
+    
     @classmethod
     async def get_or_create_user(cls, user: 'Member'):
         """Get the unique user row or create it if not exists."""
+        guild_data, _ = await GuildData.get_or_create_guild(user.guild)
         try:
-            return await cls.get(id=user.id, guild_id=user.guild.id), False
+            return await cls.get(id=user.id, guild=guild_data), False
         except:
             return await cls.create(
                 id=user.id,
                 name=user.display_name,
-                guild_id=user.guild.id,
+                guild=guild_data,
                 created_at=user.created_at
             ), True
     @classmethod
@@ -485,10 +485,10 @@ class MemberData(UserData):
         if isinstance(user, User):
             return await UserData.get_or_create_user(user)
         return await cls.get_or_create_user(user)
-
+    
     class Meta:
         table = "members_data"
-        unique_together = [("id", "guild_id")] 
+        unique_together = [("id", "guild")] 
 
     async def get_user(self) -> UserData:
         """Get or create parent UserData."""
@@ -524,7 +524,7 @@ class MemberData(UserData):
     async def increment_messages(self, content: str) -> None:
         """Update message statistics for both member and user."""
         user = await self.get_user()
-
+        
         # Update both models
         for model in (self, user):
             model.total_messages += 1
@@ -535,7 +535,7 @@ class MemberData(UserData):
     async def track_attachment(self, type: str) -> None:
         """Track attachment for both member and user."""
         user = await self.get_user()
-
+        
         for model in (self, user):
             model.attachment_count += 1
             if type.startswith("image"):
@@ -547,7 +547,7 @@ class MemberData(UserData):
             else:
                 model.attachment_other_count += 1
             await model.save()
-
+    
     async def increment_command_count(self, interaction: 'Interaction') -> None:
         """Increment the command usage count"""
         user = await self.get_user()
@@ -563,7 +563,7 @@ class MemberData(UserData):
     async def add_mentioned_user(self, user_ids: List[int]) -> None:
         """Add mentioned user to both member and user."""
         user = await self.get_user()
-
+        
         for model in (self, user):
             model.mention_count += len(user_ids)
             model.unique_users_mentioned.update(user_ids)
@@ -572,7 +572,7 @@ class MemberData(UserData):
     async def add_emojis(self, emojis: List[str], is_custom: bool = False) -> None:
         """Add emoji to both member and user."""
         user = await self.get_user()
-
+        
         for model in (self, user):
             if is_custom:
                 model.unique_custom_emojis_used.update(emojis)
@@ -585,7 +585,7 @@ class MemberData(UserData):
     async def add_domains(self, domains: List[str]) -> None:
         """Add domain to both member and user."""
         user = await self.get_user()
-
+        
         for model in (self, user):
             model.links_count += len(domains)
             model.unique_domains.update(domains)
@@ -594,21 +594,21 @@ class MemberData(UserData):
     async def add_channel_use(self, channel: str) -> None:
         """Track channel usage for both member and user."""
         user = await self.get_user()
-
+        
         for model in (self, user):
             model.preferred_channels[channel] = model.preferred_channels.get(channel, 0) + 1
             await model.save()
-
+    
     async def add_replies(self, message: 'Message'):
         user = await self.get_user()
-
+        
         for model in (self, user):
             model.replies_count += 1 if message.reference else 0
             await model.save()
-
+    
     async def add_gifs(self, gifs: List[str]):
         user = await self.get_user()
-
+        
         for model in (self, user):
             model.gif_count += len(gifs)
             await model.save()
@@ -616,7 +616,7 @@ class MemberData(UserData):
         if len(message.attachments) >= 1:
             for att in message.attachments:
                 await self.track_attachment(att.content_type if att.content_type else "other")
-
+    
     async def incrementMessageCount(self, message: 'Message'):
         """Only call this method for UserData instances"""   
         await self.generalUpdateInfo(message.author)
@@ -894,6 +894,8 @@ class GuildData(Model):
     id                          = fields.BigIntField(pk=True)
     name                        = fields.CharField(max_length=100)
     created_at                  = fields.DatetimeField()
+    
+    members = fields.ReverseRelation['UserData']
     
     # Integer fields
     total_messages              = fields.IntField(default=0)
