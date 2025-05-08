@@ -139,7 +139,7 @@ class UserData(Model):
     .. versionadded:: Nexon 0.3.0
     """
     # Required fields
-    id                          = fields.BigIntField()
+    id                          = fields.BigIntField(pk=True, unique=True)
     name                        = fields.CharField(max_length=32)
     
     # Integer fields
@@ -464,6 +464,8 @@ class UserData(Model):
     
     
 class MemberData(UserData):
+    id = fields.IntField(pk=True, generated=True)
+    user_id = fields.BigIntField()  # Foreign key to UserData
     guild = fields.ForeignKeyField("models.GuildData", related_name="members")
     
     @classmethod
@@ -471,10 +473,10 @@ class MemberData(UserData):
         """Get the unique user row or create it if not exists."""
         guild_data, _ = await GuildData.get_or_create_guild(user.guild)
         try:
-            return await cls.get(id=user.id, guild=guild_data), False
+            return await cls.get(user_id=user.id, guild=guild_data), False
         except:
             return await cls.create(
-                id=user.id,
+                user_id=user.id,
                 name=user.display_name,
                 guild=guild_data,
                 created_at=user.created_at
@@ -488,7 +490,7 @@ class MemberData(UserData):
     
     class Meta:
         table = "members_data"
-        unique_together = [("id", "guild")] 
+        unique_together = [("user_id", "guild")] 
 
     async def get_user(self) -> UserData:
         """Get or create parent UserData."""
