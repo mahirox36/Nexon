@@ -195,14 +195,15 @@ class UserData(Model):
     last_command_use             : Dict[str, float]  = fields.JSONField(default=dict, null=True)  # type: ignore
     
     @classmethod
-    async def get_or_create_user(cls, user: 'User'):
+    async def get_or_create_user(cls, user: Union['User', 'Member']):
         """Get the unique user row or create it if not exists."""
         try:
             return await cls.get(id=user.id), False
         except:
+            name = user.global_name or user.name
             return await cls.create(
                 id=user.id,
-                name=user.display_name,
+                name=name,
                 created_at=user.created_at
             ), True
     
@@ -464,24 +465,81 @@ class UserData(Model):
         table = "users_data"
     
     
-class MemberData(UserData):
-    id = fields.IntField(pk=True, generated=True)
-    user_id = fields.BigIntField()  # Foreign key to UserData
-    guild = fields.ForeignKeyField("models.GuildData", related_name="members")
+class MemberData(Model):
+    user: fields.ForeignKeyRelation["UserData"] = fields.ForeignKeyField(
+        "models.UserData", related_name="members", on_delete=fields.CASCADE
+    )
+    guild: fields.ForeignKeyRelation["GuildData"] = fields.ForeignKeyField(
+        "models.GuildData", related_name="members", on_delete=fields.CASCADE
+    )
+    name                        = fields.CharField(max_length=32)
+    
+    # Integer fields
+    total_messages              = fields.IntField(default=0)
+    character_count             = fields.IntField(default=0)
+    word_count                  = fields.IntField(default=0)
+    attachment_count            = fields.IntField(default=0)
+    attachment_image_count      = fields.IntField(default=0)
+    attachment_video_count      = fields.IntField(default=0)
+    attachment_audio_count      = fields.IntField(default=0)
+    attachment_other_count      = fields.IntField(default=0)
+    gif_count                   = fields.IntField(default=0)
+    mention_count               = fields.IntField(default=0)
+    emoji_count                 = fields.IntField(default=0)
+    custom_emoji_count          = fields.IntField(default=0)
+    sticker_count               = fields.IntField(default=0)
+    replies_count               = fields.IntField(default=0)
+    reactions_given_count       = fields.IntField(default=0)
+    reactions_received_count    = fields.IntField(default=0)
+    commands_used_count         = fields.IntField(default=0)
+    links_count                 = fields.IntField(default=0)
+    edited_messages_count       = fields.IntField(default=0)
+    deleted_messages_count      = fields.IntField(default=0)
+    longest_message             = fields.IntField(default=0)
+    
+    # XP-related fields
+    level                       = fields.IntField(default=1)
+    xp                          = fields.IntField(default=0)
+    xp_multiplier               = fields.FloatField(default=1.0)
+    last_xp_gain                = fields.DatetimeField(null=True)
+    daily_xp_gained             = fields.IntField(default=0)
+    daily_xp_reset              = fields.DatetimeField(null=True)
+    activity_streak             = fields.IntField(default=0)
+    longest_streak              = fields.IntField(default=0)
+    total_xp_gained             = fields.IntField(default=0)
+    milestone_rewards           = fields.JSONField(default=dict, null=True)  # Dict[str, bool
+    
+    # Date/Time fields
+    created_at                  = fields.DatetimeField(null=True)
+    birthdate                   = fields.DateField(null=True) 
+    updated_at                  = fields.DatetimeField(auto_now=True)
+    last_message                = fields.DatetimeField(null=True)
+    
+    # JSON fields with proper encoder/decoder
+    unique_names                : Set[str]   = fields.JSONField(default=lambda: {'__type__': 'set', 'items': []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder)) # type: ignore
+    unique_users_mentioned      : Set[int]   = fields.JSONField(default=lambda: {'__type__': 'set', 'items': []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder)) # type: ignore
+    unique_emojis_used          : Set[str]   = fields.JSONField(default=lambda: {'__type__': 'set', 'items': []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder)) # type: ignore
+    unique_custom_emojis_used   : Set[str]   = fields.JSONField(default=lambda: {'__type__': 'set', 'items': []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder)) # type: ignore
+    unique_domains              : Set[str]   = fields.JSONField(default=lambda: {'__type__': 'set', 'items': []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder)) # type: ignore
+    favorites_commands          : Dict[str, int]  = fields.JSONField(default=dict)  # type: ignore
+    preferred_channels          : Dict[str, int]  = fields.JSONField(default=dict)  # type: ignore
+    last_command_use             : Dict[str, float]  = fields.JSONField(default=dict, null=True)  # type: ignore
     
     @classmethod
     async def get_or_create_user(cls, user: 'Member'):
-        """Get the unique user row or create it if not exists."""
+        """Ensure UserData exists before creating MemberData."""
+        user_data, _ = await UserData.get_or_create_user(user)
         guild_data, _ = await GuildData.get_or_create_guild(user.guild)
         try:
-            return await cls.get(user_id=user.id, guild=guild_data), False
+            return await cls.get(user_id=user_data.id, guild=guild_data), False
         except:
             return await cls.create(
-                user_id=user.id,
+                user=user_data,
                 name=user.display_name,
                 guild=guild_data,
                 created_at=user.created_at
             ), True
+
     @classmethod
     async def try_get_or_create_user(cls, user: Union['Member', 'User']):
         """Get the unique user row or create it if not exists."""
@@ -493,18 +551,6 @@ class MemberData(UserData):
         table = "members_data"
         unique_together = [("user_id", "guild")] 
 
-    async def get_user(self) -> UserData:
-        """Get or create parent UserData."""
-        user, _ = await UserData.get_or_create(
-            id=self.id,
-            defaults={
-                "name": self.name,
-                "created_at": self.created_at,
-                "birthdate": self.birthdate
-            }
-        )
-        return user
-
     async def generalUpdateInfo(self, user: Union['User', 'Member']):
         """Only call this method for UserData instances"""
         if user.display_name == self.name:
@@ -515,8 +561,7 @@ class MemberData(UserData):
 
     async def set_birthdate(self, birthdate: datetime | str) -> None:
         """Set the user's birthdate"""
-        user = await self.get_user()
-        for model in (self, user):
+        for model in (self, self.user):
             try:
                 model.birthdate = datetime.strptime(birthdate, "%Y-%m-%d").date() if isinstance(birthdate, str) else birthdate
                 await model.save()
@@ -526,10 +571,8 @@ class MemberData(UserData):
     # Override increment methods to update both member and user
     async def increment_messages(self, content: str) -> None:
         """Update message statistics for both member and user."""
-        user = await self.get_user()
-        
         # Update both models
-        for model in (self, user):
+        for model in (self, self.user):
             model.total_messages += 1
             model.character_count += len(content.replace(" ", ""))
             model.word_count += len(content.split())
@@ -537,9 +580,7 @@ class MemberData(UserData):
 
     async def track_attachment(self, type: str) -> None:
         """Track attachment for both member and user."""
-        user = await self.get_user()
-        
-        for model in (self, user):
+        for model in (self, self.user):
             model.attachment_count += 1
             if type.startswith("image"):
                 model.attachment_image_count += 1
@@ -553,8 +594,7 @@ class MemberData(UserData):
     
     async def increment_command_count(self, interaction: 'Interaction') -> None:
         """Increment the command usage count"""
-        user = await self.get_user()
-        for model in (self, user):
+        for model in (self, self.user):
             if not interaction.data or interaction.data.get("type", 0) != 1:
                 continue
             command_name = interaction.data.get("name", "Unknown")
@@ -565,18 +605,14 @@ class MemberData(UserData):
     # Methods for updating sets and dictionaries
     async def add_mentioned_user(self, user_ids: List[int]) -> None:
         """Add mentioned user to both member and user."""
-        user = await self.get_user()
-        
-        for model in (self, user):
+        for model in (self, self.user):
             model.mention_count += len(user_ids)
             model.unique_users_mentioned.update(user_ids)
             await model.save()
 
     async def add_emojis(self, emojis: List[str], is_custom: bool = False) -> None:
         """Add emoji to both member and user."""
-        user = await self.get_user()
-        
-        for model in (self, user):
+        for model in (self, self.user):
             if is_custom:
                 model.unique_custom_emojis_used.update(emojis)
                 model.custom_emoji_count += len(emojis)
@@ -587,32 +623,24 @@ class MemberData(UserData):
 
     async def add_domains(self, domains: List[str]) -> None:
         """Add domain to both member and user."""
-        user = await self.get_user()
-        
-        for model in (self, user):
+        for model in (self, self.user):
             model.links_count += len(domains)
             model.unique_domains.update(domains)
             await model.save()
 
     async def add_channel_use(self, channel: str) -> None:
         """Track channel usage for both member and user."""
-        user = await self.get_user()
-        
-        for model in (self, user):
+        for model in (self, self.user):
             model.preferred_channels[channel] = model.preferred_channels.get(channel, 0) + 1
             await model.save()
     
     async def add_replies(self, message: 'Message'):
-        user = await self.get_user()
-        
-        for model in (self, user):
+        for model in (self, self.user):
             model.replies_count += 1 if message.reference else 0
             await model.save()
     
     async def add_gifs(self, gifs: List[str]):
-        user = await self.get_user()
-        
-        for model in (self, user):
+        for model in (self, self.user):
             model.gif_count += len(gifs)
             await model.save()
     async def add_attachments(self, message: 'Message'):
