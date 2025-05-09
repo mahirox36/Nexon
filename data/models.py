@@ -142,6 +142,7 @@ class UserData(Model):
     # Required fields
     id                          = fields.BigIntField(pk=True, unique=True)
     name                        = fields.CharField(max_length=32)
+    members                     = fields.ReverseRelation['MemberData']
     
     # Integer fields
     total_messages              = fields.IntField(default=0)
@@ -511,7 +512,6 @@ class MemberData(Model):
     
     # Date/Time fields
     created_at                  = fields.DatetimeField(null=True)
-    birthdate                   = fields.DateField(null=True) 
     updated_at                  = fields.DatetimeField(auto_now=True)
     last_message                = fields.DatetimeField(null=True)
     
@@ -531,7 +531,10 @@ class MemberData(Model):
         user_data, _ = await UserData.get_or_create_user(user)
         guild_data, _ = await GuildData.get_or_create_guild(user.guild)
         try:
-            return await cls.get(user_id=user_data.id, guild=guild_data), False
+            member = await cls.get(user=user_data, guild=guild_data)
+            await member.fetch_related('user')
+            await member.fetch_related('guild')
+            return member, False
         except:
             return await cls.create(
                 user=user_data,
@@ -561,12 +564,7 @@ class MemberData(Model):
 
     async def set_birthdate(self, birthdate: datetime | str) -> None:
         """Set the user's birthdate"""
-        for model in (self, self.user):
-            try:
-                model.birthdate = datetime.strptime(birthdate, "%Y-%m-%d").date() if isinstance(birthdate, str) else birthdate
-                await model.save()
-            except ValueError:
-                raise ValueError("Invalid date format. Use YYYY-MM-DD.")
+        await self.user.set_birthdate(birthdate)
 
     # Override increment methods to update both member and user
     async def increment_messages(self, content: str) -> None:
@@ -926,7 +924,7 @@ class GuildData(Model):
     name                        = fields.CharField(max_length=100)
     created_at                  = fields.DatetimeField()
     
-    members = fields.ReverseRelation['UserData']
+    members                     = fields.ReverseRelation['MemberData']
     
     # Integer fields
     total_messages              = fields.IntField(default=0)
