@@ -903,7 +903,9 @@ class GuildData(Model):
     total_messages              = fields.IntField(default=0)
     
     # Date/Time fields
-    updated_at                 = fields.DatetimeField(auto_now=True)
+    updated_at                  = fields.DatetimeField(auto_now=True)
+    
+    deletion_requested_at       = fields.DatetimeField(null=True)
     
     class Meta:
         table = "guilds_data"
@@ -916,6 +918,21 @@ class GuildData(Model):
             name=guild.name,
             created_at=guild.created_at
         )
+    def is_pending_deletion(self) -> bool:
+        return self.deletion_requested_at is not None
+
+    def deletion_due(self) -> bool:
+        if self.deletion_requested_at is None:
+            return False
+        return datetime.now() >= self.deletion_requested_at + timedelta(days=3)
+
+    async def request_deletion(self):
+        self.deletion_requested_at = datetime.now()
+        await self.save()
+
+    async def cancel_deletion(self):
+        self.deletion_requested_at = None
+        await self.save()
 
 class Feature(Model):
     """Feature configuration storage model.
@@ -941,6 +958,7 @@ class Feature(Model):
     settings = fields.JSONField(default=dict)
     enabled = fields.BooleanField(default=True)
     updated_at = fields.DatetimeField(auto_now=True)
+    deletion_requested_at = fields.DatetimeField(null=True)
 
     class Meta:
         table = "features"
@@ -977,6 +995,32 @@ class Feature(Model):
             defaults={'settings': {"settings": default}}
         )
         return feature
+    
+    @classmethod
+    async def delete_guild_features(cls, guild_id: int) -> None:
+        """Delete all features for a specific guild."""
+        await cls.filter(scope_type=ScopeType.GUILD, scope_id=guild_id).delete()
+    
+    @classmethod
+    async def soft_delete_guild_features(cls, guild_id: int) -> None:
+        """Soft delete all features for a specific guild."""
+        features = await cls.filter(scope_type=ScopeType.GUILD, scope_id=guild_id)
+        for feature in features:
+            if not feature.is_pending_deletion():
+                await feature.request_deletion()
+    
+    @classmethod
+    async def cancel_soft_delete_guild_features(cls, guild_id: int) -> None:
+        """Cancel soft delete for all features for a specific guild."""
+        features = await cls.filter(scope_type=ScopeType.GUILD, scope_id=guild_id)
+        for feature in features:
+            if feature.is_pending_deletion():
+                await feature.cancel_deletion()
+    
+    @classmethod
+    async def delete_user_features(cls, user_id: int) -> None:
+        """Delete all features for a specific user."""
+        await cls.filter(scope_type=ScopeType.USER, scope_id=user_id).delete()
 
     async def set_setting(self, key: str, value: Any) -> None:
         """Set a feature setting."""
@@ -1028,6 +1072,23 @@ class Feature(Model):
         """Delete everything"""
         await self.delete()
     
+    def is_pending_deletion(self) -> bool:
+        return self.deletion_requested_at is not None
+
+    def deletion_due(self) -> bool:
+        if self.deletion_requested_at is None:
+            return False
+        return datetime.now() >= self.deletion_requested_at + timedelta(days=3)
+
+    async def request_deletion(self):
+        self.deletion_requested_at = datetime.now()
+        await self.save()
+
+    async def cancel_deletion(self):
+        self.deletion_requested_at = None
+        await self.save()
+    
+    
     async def to_dict(self):
         """Convert the Feature object into a dictionary."""
         return {
@@ -1039,6 +1100,8 @@ class Feature(Model):
             "enabled": self.enabled,
             "updated_at": self.updated_at.isoformat(),
         }
+    
+    
 
 class MetricsCollector(Model):
     """Stores historical metrics data for system and bot statistics.
