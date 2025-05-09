@@ -981,8 +981,7 @@ class Feature(Model):
         feature = await cls.get_or_none(
             name=feature_name,
             scope_type=ScopeType.GUILD,
-            scope_id=guild_id,
-            defaults={'settings': {"settings": default}}
+            scope_id=guild_id
         )
         return feature
 
