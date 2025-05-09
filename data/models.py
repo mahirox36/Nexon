@@ -975,6 +975,16 @@ class Feature(Model):
             defaults={'settings': {"settings": default}}
         )
         return feature
+    @classmethod
+    async def get_guild_feature_or_none(cls, guild_id: int, feature_name: str, default: Any = {}) -> Optional['Feature']:
+        """Get a feature for a specific guild."""
+        feature = await cls.get_or_none(
+            name=feature_name,
+            scope_type=ScopeType.GUILD,
+            scope_id=guild_id,
+            defaults={'settings': {"settings": default}}
+        )
+        return feature
 
     @classmethod
     async def get_user_feature(cls, user_id: int, feature_name: str, default: Any = {}) -> 'Feature':
