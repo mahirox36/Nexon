@@ -26,6 +26,7 @@ from tortoise import fields, Model
 from typing import Any, Dict, List, Set, Union, Optional, TYPE_CHECKING
 from ..utils import extract_emojis
 from ..enums import ComparisonType, Rarity, RequirementType, ScopeType
+from .. import utils
 
 if TYPE_CHECKING:
     from ..interactions import Interaction
@@ -228,7 +229,7 @@ class UserData(Model):
             base_xp += min(content_length // 50, 5)  # Up to 5 bonus XP for longer messages
 
         # Time-based multiplier (more XP during less active hours)
-        hour = datetime.now().hour
+        hour = utils.utcnow().hour
         time_multiplier = 1.5 if hour < 6 or hour > 22 else 1.0
 
         # Streak multiplier
@@ -249,7 +250,7 @@ class UserData(Model):
             return True
             
         cooldown = timedelta(seconds=30)  # 30 second cooldown
-        return datetime.now() - self.last_xp_gain > cooldown
+        return utils.utcnow() - self.last_xp_gain > cooldown
 
     async def update_streak(self) -> None:
         """
@@ -260,7 +261,7 @@ class UserData(Model):
         - Resets streak if user missed a day.
         - Updates longest streak if broken.
         """
-        now = datetime.now()
+        now = utils.utcnow()
         reset_needed = (
             not self.daily_xp_reset or now.date() > self.daily_xp_reset.date()
         )
@@ -321,7 +322,7 @@ class UserData(Model):
         actual_xp = await self.calculate_xp_gain(activity_type, amount)
         self.daily_xp_gained += actual_xp
         self.total_xp_gained += actual_xp
-        self.last_xp_gain = datetime.now()
+        self.last_xp_gain = utils.utcnow()
 
         # Original level up logic
         old_level = self.level
@@ -376,7 +377,7 @@ class UserData(Model):
         self.favorites_commands[command_name] = self.favorites_commands.get(command_name, 0) + 1
         if self.last_command_use is None:
             self.last_command_use = {}
-        self.last_command_use[command_name] = datetime.now().timestamp()
+        self.last_command_use[command_name] = utils.utcnow().timestamp()
         self.commands_used_count += 1
         await self.save()
         await BotUser.log_command(command_name)
@@ -924,10 +925,10 @@ class GuildData(Model):
     def deletion_due(self) -> bool:
         if self.deletion_requested_at is None:
             return False
-        return datetime.now() >= self.deletion_requested_at + timedelta(days=3)
+        return utils.utcnow() >= self.deletion_requested_at + timedelta(days=3)
 
     async def request_deletion(self):
-        self.deletion_requested_at = datetime.now()
+        self.deletion_requested_at = utils.utcnow()
         await self.save()
 
     async def cancel_deletion(self):
@@ -1078,10 +1079,10 @@ class Feature(Model):
     def deletion_due(self) -> bool:
         if self.deletion_requested_at is None:
             return False
-        return datetime.now() >= self.deletion_requested_at + timedelta(days=3)
+        return utils.utcnow() >= self.deletion_requested_at + timedelta(days=3)
 
     async def request_deletion(self):
-        self.deletion_requested_at = datetime.now()
+        self.deletion_requested_at = utils.utcnow()
         await self.save()
 
     async def cancel_deletion(self):
@@ -1163,7 +1164,7 @@ class MetricsCollector(Model):
     @classmethod
     async def get_historical_data(cls, hours: int = 24) -> dict:
         """Get historical metrics for the specified time period"""
-        cutoff = datetime.now() - timedelta(hours=hours)
+        cutoff = utils.utcnow() - timedelta(hours=hours)
         metrics = await cls.filter(timestamp__gte=cutoff).order_by('timestamp')
         
         return {
@@ -1212,7 +1213,7 @@ class AIPersonality(Model):
     emotional_memory = fields.JSONField(default=list)  # Important emotional moments
     mood_tracker = fields.JSONField(default=lambda: {
         "current_mood": "relaxed", 
-        "mood_since": datetime.now().timestamp(),
+        "mood_since": utils.utcnow().timestamp(),
         "recent_moods": []
     })
     creation_date = fields.DatetimeField(auto_now_add=True)
@@ -1230,7 +1231,7 @@ class AIPersonality(Model):
             profile.emotional_memory = [
                 {
                     "type": "initial_creation",
-                    "timestamp": datetime.now().timestamp(),
+                    "timestamp": utils.utcnow().timestamp(),
                     "description": "I was first activated and began learning about the world.",
                     "mood": "curious",
                     "intensity": 0.8
@@ -1247,7 +1248,7 @@ class AIPersonality(Model):
             intensity (float): Intensity of the mood (0.0-1.0)
             trigger (str): What triggered this mood change
         """
-        current_time = datetime.now().timestamp()
+        current_time = utils.utcnow().timestamp()
         
         # Store previous mood in history
         if self.mood_tracker["current_mood"] != new_mood:
@@ -1290,7 +1291,7 @@ class AIPersonality(Model):
         memory = {
             "user_id": user_id,
             "type": event_type,
-            "timestamp": datetime.now().timestamp(),
+            "timestamp": utils.utcnow().timestamp(),
             "description": description,
             "impact": impact,
             "mood": associated_mood or self.mood_tracker["current_mood"]
@@ -1327,8 +1328,8 @@ class AIPersonality(Model):
                 "familiarity": 0.1,
                 "trust": 0.5,
                 "affinity": 0.5,
-                "first_interaction": datetime.now().timestamp(),
-                "last_interaction": datetime.now().timestamp(),
+                "first_interaction": utils.utcnow().timestamp(),
+                "last_interaction": utils.utcnow().timestamp(),
                 "interaction_count": 0,
                 "significant_interactions": []
             }
@@ -1338,7 +1339,7 @@ class AIPersonality(Model):
         relationship["familiarity"] = min(1.0, max(0.0, relationship["familiarity"] + familiarity_change))
         relationship["trust"] = min(1.0, max(0.0, relationship["trust"] + trust_change))
         relationship["affinity"] = min(1.0, max(0.0, relationship["affinity"] + affinity_change))
-        relationship["last_interaction"] = datetime.now().timestamp()
+        relationship["last_interaction"] = utils.utcnow().timestamp()
         relationship["interaction_count"] += 1
         
         await self.save()
@@ -1357,8 +1358,8 @@ class AIPersonality(Model):
             "familiarity": 0.1,
             "trust": 0.5,
             "affinity": 0.5,
-            "first_interaction": datetime.now().timestamp(),
-            "last_interaction": datetime.now().timestamp(),
+            "first_interaction": utils.utcnow().timestamp(),
+            "last_interaction": utils.utcnow().timestamp(),
             "interaction_count": 0
         }
         

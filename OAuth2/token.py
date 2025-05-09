@@ -5,6 +5,7 @@ from typing import Dict, Optional
 
 from ..types.oauth2 import Token
 from ..utils import MISSING
+from .. import utils
 
 class OAuth2Token:
     def __init__(self, token_data: Token) -> None:
@@ -15,7 +16,7 @@ class OAuth2Token:
         self._expires_at: Optional[datetime] = None
         
         if "expires_in" in token_data:
-            self._expires_at = datetime.now() + timedelta(seconds=token_data["expires_in"])
+            self._expires_at = utils.utcnow() + timedelta(seconds=token_data["expires_in"])
 
     @property
     def access_token(self) -> str:
@@ -33,7 +34,7 @@ class OAuth2Token:
     def expired(self) -> bool:
         if self._expires_at is None:
             return False
-        return datetime.now() >= self._expires_at
+        return utils.utcnow() >= self._expires_at
 
     def get_auth_header(self) -> Dict[str, str]:
         return {"Authorization": f"{self.token_type} {self.access_token}"}

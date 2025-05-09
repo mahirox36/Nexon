@@ -25,6 +25,7 @@ from .interactions import Interaction
 from .data import UserData
 from tortoise.expressions import Q
 from .data.models import UserBadge, Badge, BadgeRequirement
+from . import utils
 
 if TYPE_CHECKING:
     from .user import User
@@ -238,7 +239,7 @@ class BadgeManager:
         if requirement.type == RequirementType.TIME_BASED:
             try:
                 time_str = requirement.value.strip().upper()
-                current_time = datetime.now()
+                current_time = utils.utcnow()
                 hour, minute = map(int, time_str.replace(' ', ':').split(':')[:2])
                 
                 if 'PM' in time_str and hour != 12:
@@ -255,7 +256,7 @@ class BadgeManager:
         # Handle inactive duration
         if requirement.type == RequirementType.INACTIVE_DURATION:
             return (user_data.last_message is not None and 
-                   user_data.last_message + timedelta(hours=float(requirement.value)) < datetime.now())
+                   user_data.last_message + timedelta(hours=float(requirement.value)) < utils.utcnow())
 
         # Context-dependent requirements
         if not context:
