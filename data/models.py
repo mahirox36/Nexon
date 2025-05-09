@@ -1070,10 +1070,15 @@ class Feature(Model):
     def get_setting(self, key: Optional[str] = None, default: Any = {}) -> Any:    
         """Get a feature setting."""
         if "settings" not in self.settings:
-            self.settings["settings"] = {}
+            self.settings["settings"] = default
         if key is None:
             return self.settings.get("settings", default)
         return self.settings["settings"].get(key, default)
+    
+    async def replace_settings(self, settings: Any) -> None:
+        """Replace all settings."""
+        self.settings["settings"] = settings
+        await self.save()
     
     async def reset_settings(self) -> None:
         """Reset all settings to default."""
