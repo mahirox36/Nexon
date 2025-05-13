@@ -26,8 +26,8 @@ import re
 from tortoise import fields, Model
 from typing import Any, Dict, List, Set, Union, Optional, TYPE_CHECKING, Sequence
 
-from embeds import Embed
-from ext import commands
+from ..embeds import Embed
+# from ..ext import commands
 from ..utils import extract_emojis
 from ..enums import ComparisonType, LogLevel, Rarity, RequirementType, ScopeType
 from .. import utils
@@ -1573,7 +1573,7 @@ class Logs(Model):
             self,
             guild: "Guild",
             user: Optional[Union["User", "Member"]] = None,
-            cog: Optional[str | commands.Cog] = None,
+            cog: Optional[Any] = None,
             command: Optional[str] = None,
         ):
             """Initialize the logger with guild and user context."""
