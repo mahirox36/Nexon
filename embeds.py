@@ -33,7 +33,7 @@ class EmbedProxy:
 
 
 if TYPE_CHECKING:
-    from nexon.types.embed import Embed as EmbedData, EmbedType
+    from .types.embed import Embed as EmbedData, EmbedType
 
     class _EmbedFooterProxy(Protocol):
         text: Optional[str]

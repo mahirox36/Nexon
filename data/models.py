@@ -24,9 +24,12 @@ import json
 from math import floor, sqrt
 import re
 from tortoise import fields, Model
-from typing import Any, Dict, List, Set, Union, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Set, Union, Optional, TYPE_CHECKING, Sequence
+
+from embeds import Embed
+from ext import commands
 from ..utils import extract_emojis
-from ..enums import ComparisonType, Rarity, RequirementType, ScopeType
+from ..enums import ComparisonType, LogLevel, Rarity, RequirementType, ScopeType
 from .. import utils
 
 if TYPE_CHECKING:
@@ -49,6 +52,7 @@ __all__ = (
     "Feature",
     "MetricsCollector",
     "AIPersonality",
+    "Logs",
 )
 
 
@@ -964,7 +968,7 @@ class UserBadge(Model):
         """Get all badges for a specific user."""
         return await cls.filter(user_id=user_id).prefetch_related("badge").all()
 
-    async def to_dict(self) -> Dict[str, Union[int, str]]:
+    async def to_dict(self) -> Dict[str, Union[int, str, List[Dict[str, Union[int, str]]]]]:
         """Convert the UserBadge object into a dictionary."""
         badge_dict = await self.badge.to_dict()
         combined_dict = {
@@ -1531,3 +1535,221 @@ class AIPersonality(Model):
         # Store the preference
         self.learned_preferences[user_id_str][preference_type] = preference_value
         await self.save()
+
+
+class Logs(Model):
+    """Stores log entries for various events.
+
+    Attributes:
+        id (int): Log entry ID
+        timestamp (datetime): When the log was created
+        level (str): Log level (info, warning, error, etc.)
+        cog (str): Name of the cog or module
+        command (str): Name of the command or event
+        message (str): Log message
+        context (dict): Additional context or metadata
+        user_id (int): ID of the user associated with this log entry
+    """
+
+    id = fields.IntField(pk=True)
+    timestamp = fields.DatetimeField(auto_now_add=True)
+    level = fields.CharEnumField(LogLevel, max_length=20)
+    cog = fields.CharField(max_length=100, null=True)
+    command = fields.CharField(max_length=100, null=True)
+    message = fields.TextField()
+    context = fields.JSONField(default=dict)
+    guild = fields.ForeignKeyField(
+        "models.GuildData", related_name="logs", on_delete=fields.CASCADE
+    )
+    user = fields.ForeignKeyField(
+        "models.UserData", related_name="logs", on_delete=fields.CASCADE, null=True
+    )
+
+    class Meta:
+        table = "logs"
+
+    class Logger:
+        def __init__(
+            self,
+            guild: "Guild",
+            user: Optional[Union["User", "Member"]] = None,
+            cog: Optional[str | commands.Cog] = None,
+            command: Optional[str] = None,
+        ):
+            """Initialize the logger with guild and user context."""
+            self.guild = guild
+            self.user = user
+            self.cog = cog if isinstance(cog, str) else cog.__class__.__name__
+            self.command = command
+
+        async def log(self, level: LogLevel, message: str, context: Optional[dict] = {}):
+            """Create a new log entry."""
+            guild_data = await GuildData.get_or_create_guild(self.guild)
+            user_data = (
+                await UserData.get_or_create_user(self.user) if self.user else None
+            )
+
+            return await Logs.create(
+                guild=guild_data,
+                user=user_data,
+                level=level,
+                cog=self.cog,
+                command=self.command,
+                message=message,
+                context=context,
+            )
+
+        async def info(self, message: str, context: Optional[dict] = {}):
+            """Log an info message."""
+            return await self.log(LogLevel.INFO, message, context)
+
+        async def warning(self, message: str, context: Optional[dict] = {}):
+            """Log a warning message."""
+            return await self.log(LogLevel.WARNING, message, context)
+
+        async def error(self, message: str, context: Optional[dict] = {}):
+            """Log an error message."""
+            return await self.log(LogLevel.ERROR, message, context)
+        
+        async def debug(self, message: str, context: Optional[dict] = {}):
+            """Log a debug message."""
+            return await self.log(LogLevel.DEBUG, message, context)
+        async def critical(self, message: str, context: Optional[dict] = {}):
+            """Log a critical message."""
+            return await self.log(LogLevel.CRITICAL, message, context)
+        async def exception(self, message: str, context: Optional[dict] = {}):
+            """Log an exception message."""
+            return await self.log(LogLevel.EXCEPTION, message, context)
+
+
+class Messages(Model):
+    """Stores messages sent by the bot.
+
+    Attributes:
+        id (int): Message ID
+        user_id (int): ID of the user who sent the message
+        channel_id (int): ID of the channel where the message was sent
+        guild_id (int): ID of the guild where the message was sent
+        content (str): Content of the message
+        timestamp (datetime): When the message was sent
+    """
+
+    id = fields.IntField(pk=True)
+    user_id = fields.BigIntField()
+    channel_id = fields.BigIntField()
+    guild_id = fields.BigIntField()
+    content = fields.TextField()
+    timestamp = fields.DatetimeField(auto_now_add=True)
+    embeds = fields.ReverseRelation["Embeds"]
+
+    class Meta:
+        table = "messages"
+    
+    @classmethod
+    async def get_messages_by_user(cls, user_id: int) -> Sequence['Messages']:
+        """Get all messages sent by a specific user."""
+        return await cls.filter(user_id=user_id).prefetch_related("embeds").all()
+    @classmethod
+    async def get_messages_by_guild(cls, guild_id: int) -> Sequence["Messages"]:
+        """Get all messages sent in a specific guild."""
+        return await cls.filter(guild_id=guild_id).prefetch_related("embeds").all()
+    @classmethod
+    async def get_messages_by_channel(cls, channel_id: int) -> Sequence["Messages"]:
+        """Get all messages sent in a specific channel."""
+        return await cls.filter(channel_id=channel_id).prefetch_related("embeds").all()
+    @classmethod
+    async def create_message(
+        cls,
+        user_id: int,
+        channel_id: int,
+        guild_id: int,
+        content: str,
+        embeds: Optional[List[Embed | dict]] = None,
+    ) -> "Messages":
+        """Create a new message entry."""
+        message = await cls.create(
+            user_id=user_id,
+            channel_id=channel_id,
+            guild_id=guild_id,
+            content=content,
+        )
+        if embeds:
+            for embed in embeds:
+                if isinstance(embed, Embed):
+                    await Embeds.create(message=message, **embed.to_dict())
+                elif isinstance(embed, dict):
+                    await Embeds.create(message=message, **embed)
+        return message
+    async def to_dict(self) -> Dict[str, Union[int, str, List[Dict[str, Union[int, str]]]]]:
+        """Convert the Messages object into a dictionary."""
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "channel_id": self.channel_id,
+            "guild_id": self.guild_id,
+            "content": self.content,
+            "timestamp": self.timestamp.isoformat(),  # Convert datetime to string
+            "embeds": [await embed.to_dict() for embed in (await self.fetch_related("embeds") or [])],
+        }
+
+
+class Embeds(Model):
+    """Stores embeds made By Users.
+    
+    Attributes:
+        id (int): Embed ID
+        title (str): Title of the embed
+        type (str): Type of the embed
+        description (str): Description of the embed
+        url (str): URL of the embed
+        timestamp (str): When the embed was sent
+        color (int): Color of the embed
+        footer (dict): Footer information
+        image (dict): Image information
+        thumbnail (dict): Thumbnail information
+        video (dict): Video information
+        provider (dict): Provider information
+        author (dict): Author information
+        fields (list): List of fields in the embed
+    """
+
+    id = fields.IntField(pk=True)
+    title = fields.CharField(max_length=255, null=True)
+    type = fields.CharField(max_length=50, null=True)
+    description = fields.TextField(null=True)
+    url = fields.CharField(max_length=255, null=True)
+    timestamp = fields.CharField(max_length=255, null=True)
+    color = fields.IntField(null=True)
+    footer = fields.JSONField(default=dict, null=True)  # EmbedFooter
+    image = fields.JSONField(default=dict, null=True)  # Image
+    thumbnail = fields.JSONField(default=dict, null=True)  # Thumbnail
+    video = fields.JSONField(default=dict, null=True)  # Video
+    provider = fields.JSONField(default=dict, null=True)  # EmbedProvider
+    author = fields.JSONField(default=dict, null=True)  # EmbedAuthor
+    fields = fields.JSONField(default=list, null=True)  # List[EmbedField]
+
+    class Meta:
+        table = "embeds"
+    
+    @classmethod
+    async def from_dict(cls, data: dict) -> "Embeds":
+        """Create an Embeds object from a dictionary."""
+        return await cls.create(**data)
+    async def to_dict(self) -> Dict[str, Union[int, str]]:
+        """Convert the Embeds object into a dictionary."""
+        return {
+            "id": self.id,
+            "title": self.title,
+            "type": self.type,
+            "description": self.description,
+            "url": self.url,
+            "timestamp": self.timestamp,
+            "color": self.color,
+            "footer": self.footer,
+            "image": self.image,
+            "thumbnail": self.thumbnail,
+            "video": self.video,
+            "provider": self.provider,
+            "author": self.author,
+            "fields": self.fields,
+        }

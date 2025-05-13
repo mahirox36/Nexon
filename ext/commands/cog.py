@@ -7,8 +7,8 @@ import contextlib
 import inspect
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generator, List, Tuple, TypeVar
 
-import nexon.utils
-from nexon.application_command import ClientCog, _cog_special_method
+from ... import utils
+from ...application_command import ClientCog, _cog_special_method
 
 from ._types import _BaseCommand
 
@@ -27,7 +27,7 @@ __all__ = (
 CogT = TypeVar("CogT", bound="Cog")
 FuncT = TypeVar("FuncT", bound=Callable[..., Any])
 
-MISSING: Any = nexon.utils.MISSING
+MISSING: Any = utils.MISSING
 
 
 class CogMeta(type):

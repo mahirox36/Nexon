@@ -16,15 +16,17 @@ from typing import TYPE_CHECKING, Tuple, Union, Callable
 from typing import List, Optional
 from datetime import datetime, timedelta
 
+from .abc import GuildChannel
+
 
 from .enums import RequirementType, Rarity, ComparisonType
 import re
 from .utils import extract_emojis
 from .message import Message
-from .interactions import Interaction
+from .interactions import Interaction, InteractionChannel
 from .data import UserData
 from tortoise.expressions import Q
-from .data.models import UserBadge, Badge, BadgeRequirement
+from .data.models import MemberData, UserBadge, Badge, BadgeRequirement
 from . import utils
 
 if TYPE_CHECKING:
@@ -42,7 +44,7 @@ __all__ = (
 )
 
 
-async def onBadgeEarned(user: Union['User', 'Member'], badge: 'Badge') -> None:
+async def onBadgeEarned(user: Union['User', 'Member'], badge: 'Badge', channel: Optional[GuildChannel]) -> None:
     """Default event handler called when a user earns a badge.
     
     .. versionadded:: Nexon 0.2.3
@@ -164,7 +166,7 @@ class BadgeManager:
         await Badge.filter(id=badge_id).update(**kwargs)
         return await self.get_badge(badge_id)
 
-    async def award_badge(self, user: Union['User', 'Member'], badge_id: int) -> bool:
+    async def award_badge(self, user: Union['User', 'Member'], badge_id: int, channel: Optional[GuildChannel]) -> bool:
         if await UserBadge.filter(user_id=user.id, badge_id=badge_id).exists():
             return False  # Already has the badge
         await UserBadge.create(user_id=user.id, badge_id=badge_id)
@@ -172,7 +174,7 @@ class BadgeManager:
         badge = await self.get_badge(badge_id)
         if not badge:
             raise RuntimeError("Badge creation succeeded but fetching failed, which is unexpected.")
-        await self.badge_earned_callback(user, badge)
+        await self.badge_earned_callback(user, badge, channel)
         return True
 
     async def remove_user_badge(self, user_id: int, badge_id: int) -> bool:
@@ -194,7 +196,7 @@ class BadgeManager:
     async def verify_requirement(
         self, 
         requirement: BadgeRequirement, 
-        user_data: 'UserData',
+        user_data: Union[ 'UserData', 'MemberData'],
         context: Optional[Union[Message, Interaction]] = None
     ) -> bool:
         """Verify if a single requirement is met.
@@ -339,6 +341,7 @@ class BadgeManager:
         earned_badges = await self.check_for_new_badges(user, context)
         
         for badge in earned_badges:
-            await self.award_badge(user, badge.id)
+            channel = context.channel if context and context.guild and isinstance(context.channel, GuildChannel) else None
+            await self.award_badge(user, badge.id, channel)
         
         return earned_badges

@@ -57,7 +57,8 @@ __all__ = (
     "Rarity",
     "RequirementType",
     "ComparisonType",
-    "ScopeType"
+    "ScopeType",
+    "LogLevel",
 )
 
 
@@ -2097,6 +2098,7 @@ class MessageReferenceType(IntEnum):
     forward = 1
     """The reference is used to point to a message."""
 
+
 class Rarity(BaseIntEnum):
     """Represents the rarity of a sticker.
 
@@ -2114,12 +2116,14 @@ class Rarity(BaseIntEnum):
     legendary = 5
     """The sticker is legendary."""
 
+
 class RequirementType(StrEnum):
     """
     Enumeration of requirement types for tracking user activities and achievements.
-    
+
     .. versionadded:: Nexon 0.2.1
     """
+
     MESSAGE_COUNT = "message_count"
     MESSAGE_SENT = "message_sent"
     COMMAND_USE = "command_use"
@@ -2145,30 +2149,33 @@ class RequirementType(StrEnum):
     ALL_COMMANDS = "all_commands"
     MESSAGE_EDIT_COUNT = "message_edit_count"
     MESSAGE_DELETE_COUNT = "message_delete_count"
-    
+
     # New in Nexon 0.3.0
-    SERVER_BOOST = "server_boost"
-    LEVEL = "level"
+    # SERVER_BOOST = "server_boost"
+    # LEVEL = "level"
 
     # New suggested types
-    #TODO: THREAD_CREATION = "thread_creation"                  # Track thread creation 
-    #TODO: THREAD_PARTICIPATION = "thread_participation"        # Track participation in threads
-    #TODO: INVITE_USAGE = "invite_usage"                        # Track how many people joined via user's invites
-    #TODO: FORUM_POSTS = "forum_posts"                          # Track posts in forum channels
-    #TODO: EVENT_CREATION = "event_creation"                    # Track scheduled event creation 
-    #TODO: EVENT_PARTICIPATION = "event_participation"          # Track event attendance
-    #TODO: MESSAGE_PIN = "message_pin"                          # Track messages that get pinned
-    #TODO: BUTTON_CLICKS = "button_clicks"                      # Track interaction with bot buttons
-    #TODO: SELECT_MENU_USAGE = "select_menu_usage"              # Track usage of select menus
-    #TODO: MODAL_SUBMISSIONS = "modal_submissions"              # Track form submissions
-    #TODO: SLASH_COMMAND_VARIETY = "slash_command_variety"      # Track unique slash commands used
-    #TODO: STICKER_USAGE = "sticker_usage"                      # Track sticker usage
+    # TODO: THREAD_CREATION = "thread_creation"                  # Track thread creation
+    # TODO: THREAD_PARTICIPATION = "thread_participation"        # Track participation in threads
+    # TODO: INVITE_USAGE = "invite_usage"                        # Track how many people joined via user's invites
+    # TODO: FORUM_POSTS = "forum_posts"                          # Track posts in forum channels
+    # TODO: EVENT_CREATION = "event_creation"                    # Track scheduled event creation
+    # TODO: EVENT_PARTICIPATION = "event_participation"          # Track event attendance
+    # TODO: MESSAGE_PIN = "message_pin"                          # Track messages that get pinned
+    # TODO: BUTTON_CLICKS = "button_clicks"                      # Track interaction with bot buttons
+    # TODO: SELECT_MENU_USAGE = "select_menu_usage"              # Track usage of select menus
+    # TODO: MODAL_SUBMISSIONS = "modal_submissions"              # Track form submissions
+    # TODO: SLASH_COMMAND_VARIETY = "slash_command_variety"      # Track unique slash commands used
+    # TODO: STICKER_USAGE = "sticker_usage"                      # Track sticker usage
+
 
 class ComparisonType(StrEnum):
     """
     Enumeration of Comparison types for Comparing Values.
+
     .. versionadded:: Nexon 0.3.0
     """
+
     GREATER_EQUAL = ">="
     LESS_EQUAL = "<="
     EQUAL = "=="
@@ -2176,15 +2183,33 @@ class ComparisonType(StrEnum):
     LESS = "<"
     NOT_EQUAL = "!="
 
+
 class ScopeType(StrEnum):
     """
     Enumeration of scope types for features settings.
-    
+
     .. versionadded:: Nexon 0.3.0
     """
+
     GUILD = "guild"
     USER = "user"
     GLOBAL = "global"
+
+
+class LogLevel(str, Enum):
+    """Represents the log level for the logger.
+
+    .. versionadded:: Nexon 0.3.1
+    """
+
+    INFO = "info"
+    WARNING = "warning"
+    ERROR = "error"
+    DEBUG = "debug"
+    EXCEPTION = "exception"
+    CRITICAL = "critical"
+    CONFIGURATION_SAVED = "configuration_saved"
+
 
 T = TypeVar("T")
 
