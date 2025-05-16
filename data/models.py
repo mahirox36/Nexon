@@ -1632,15 +1632,19 @@ class Messages(Model):
         guild_id (int): ID of the guild where the message was sent
         content (str): Content of the message
         timestamp (datetime): When the message was sent
+        embeds (list): List of embeds associated with the message
     """
 
     id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=100, null=True)
+    message_id = fields.BigIntField(null=True)
     user_id = fields.BigIntField()
     channel_id = fields.BigIntField()
     guild_id = fields.BigIntField()
     content = fields.TextField()
-    timestamp = fields.DatetimeField(auto_now_add=True)
-    embeds = fields.ReverseRelation["Embeds"]
+    created_at = fields.DatetimeField(auto_now_add=True)
+    timestamp = fields.DatetimeField(auto_now=True)
+    embeds = fields.JSONField(default=list, null=True)
 
     class Meta:
         table = "messages"
@@ -1648,108 +1652,61 @@ class Messages(Model):
     @classmethod
     async def get_messages_by_user(cls, user_id: int) -> Sequence['Messages']:
         """Get all messages sent by a specific user."""
-        return await cls.filter(user_id=user_id).prefetch_related("embeds").all()
+        return await cls.filter(user_id=user_id).all()
     @classmethod
     async def get_messages_by_guild(cls, guild_id: int) -> Sequence["Messages"]:
         """Get all messages sent in a specific guild."""
-        return await cls.filter(guild_id=guild_id).prefetch_related("embeds").all()
+        return await cls.filter(guild_id=guild_id).all()
     @classmethod
     async def get_messages_by_channel(cls, channel_id: int) -> Sequence["Messages"]:
         """Get all messages sent in a specific channel."""
-        return await cls.filter(channel_id=channel_id).prefetch_related("embeds").all()
+        return await cls.filter(channel_id=channel_id).all()
     @classmethod
     async def create_message(
         cls,
+        name: str,
         user_id: int,
         channel_id: int,
         guild_id: int,
         content: str,
-        embeds: Optional[List[Embed | dict]] = None,
+        embeds: Optional[List[dict]] = None,
     ) -> "Messages":
         """Create a new message entry."""
         message = await cls.create(
+            name=name,
             user_id=user_id,
             channel_id=channel_id,
             guild_id=guild_id,
             content=content,
+            embeds=embeds or [],
         )
-        if embeds:
-            for embed in embeds:
-                if isinstance(embed, Embed):
-                    await Embeds.create(message=message, **embed.to_dict())
-                elif isinstance(embed, dict):
-                    await Embeds.create(message=message, **embed)
         return message
-    async def to_dict(self) -> Dict[str, Union[int, str, List[Dict[str, Union[int, str]]]]]:
+    def to_dict(self) -> Dict[str, Union[int, str, List[Dict[str, Union[int, str]]]]]:
         """Convert the Messages object into a dictionary."""
         return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "channel_id": self.channel_id,
-            "guild_id": self.guild_id,
+            "name": self.name,
+            "message_id": str(self.message_id),
+            "id": str(self.id),
+            "user_id": str(self.user_id),
+            "channel_id": str(self.channel_id),
+            "guild_id": str(self.guild_id),
             "content": self.content,
             "timestamp": self.timestamp.isoformat(),  # Convert datetime to string
-            "embeds": [await embed.to_dict() for embed in (await self.fetch_related("embeds") or [])],
+            "created_at": self.created_at.isoformat(),  # Convert datetime to string
+            "embeds": self.embeds,
         }
-
-
-class Embeds(Model):
-    """Stores embeds made By Users.
     
-    Attributes:
-        id (int): Embed ID
-        title (str): Title of the embed
-        type (str): Type of the embed
-        description (str): Description of the embed
-        url (str): URL of the embed
-        timestamp (str): When the embed was sent
-        color (int): Color of the embed
-        footer (dict): Footer information
-        image (dict): Image information
-        thumbnail (dict): Thumbnail information
-        video (dict): Video information
-        provider (dict): Provider information
-        author (dict): Author information
-        fields (list): List of fields in the embed
-    """
-
-    id = fields.IntField(pk=True)
-    title = fields.CharField(max_length=255, null=True)
-    type = fields.CharField(max_length=50, null=True)
-    description = fields.TextField(null=True)
-    url = fields.CharField(max_length=255, null=True)
-    timestamp = fields.CharField(max_length=255, null=True)
-    color = fields.IntField(null=True)
-    footer = fields.JSONField(default=dict, null=True)  # EmbedFooter
-    image = fields.JSONField(default=dict, null=True)  # Image
-    thumbnail = fields.JSONField(default=dict, null=True)  # Thumbnail
-    video = fields.JSONField(default=dict, null=True)  # Video
-    provider = fields.JSONField(default=dict, null=True)  # EmbedProvider
-    author = fields.JSONField(default=dict, null=True)  # EmbedAuthor
-    fields = fields.JSONField(default=list, null=True)  # List[EmbedField]
-
-    class Meta:
-        table = "embeds"
+    @property
+    def embed_count(self) -> int:
+        """Get the number of embeds in this message."""
+        return len(self.embeds) if self.embeds else 0
     
-    @classmethod
-    async def from_dict(cls, data: dict) -> "Embeds":
-        """Create an Embeds object from a dictionary."""
-        return await cls.create(**data)
-    async def to_dict(self) -> Dict[str, Union[int, str]]:
-        """Convert the Embeds object into a dictionary."""
-        return {
-            "id": self.id,
-            "title": self.title,
-            "type": self.type,
-            "description": self.description,
-            "url": self.url,
-            "timestamp": self.timestamp,
-            "color": self.color,
-            "footer": self.footer,
-            "image": self.image,
-            "thumbnail": self.thumbnail,
-            "video": self.video,
-            "provider": self.provider,
-            "author": self.author,
-            "fields": self.fields,
-        }
+    @property
+    def is_edited(self) -> bool:
+        """Check if the message has been edited."""
+        return self.created_at != self.timestamp and self.is_sent
+    
+    @property
+    def is_sent(self) -> bool:
+        """Check if the message has been sent."""
+        return self.message_id is not None

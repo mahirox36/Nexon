@@ -1994,6 +1994,7 @@ class BaseApplicationCommand(CallbackMixin, CallbackWrapperMixin):
         contexts: Optional[Iterable[Union[InteractionContextType, int]]] = None,
         parent_cog: Optional[ClientCog] = None,
         force_global: bool = False,
+        cooldown: Optional[Union[float, int]] = None,
     ) -> None:
         """Base application command class that all specific application command classes should subclass. All common
         behavior should be here, with subclasses either adding on or overriding specific aspects of this class.
@@ -2069,6 +2070,7 @@ class BaseApplicationCommand(CallbackMixin, CallbackWrapperMixin):
             Command IDs that this application command currently has. Schema: {Guild ID (None for global): command ID}
         """
         self._options: Dict[str, ApplicationCommandOption] = {}
+        self.cooldown: Optional[Union[float, int]] = cooldown
 
     # Simple-ish getter + setter methods.
 
@@ -2642,6 +2644,7 @@ class SlashApplicationSubcommand(SlashCommandMixin, AutocompleteCommandMixin, Ca
         parent_cmd: Union[SlashApplicationCommand, SlashApplicationSubcommand, None] = None,
         parent_cog: Optional[ClientCog] = None,
         inherit_hooks: bool = False,
+        cooldown: Optional[Union[float, int]] = None,
     ) -> None:
         """Slash Application Subcommand, supporting additional subcommands and autocomplete.
 
@@ -2687,6 +2690,7 @@ class SlashApplicationSubcommand(SlashCommandMixin, AutocompleteCommandMixin, Ca
         self._inherit_hooks: bool = inherit_hooks
 
         self.options: Dict[str, SlashCommandOption] = {}
+        self.cooldown: Optional[Union[float, int]] = cooldown
 
     @property
     def qualified_name(self) -> str:
@@ -2805,6 +2809,7 @@ class SlashApplicationSubcommand(SlashCommandMixin, AutocompleteCommandMixin, Ca
         name_localizations: Optional[Dict[Union[Locale, str], str]] = None,
         description_localizations: Optional[Dict[Union[Locale, str], str]] = None,
         inherit_hooks: bool = False,
+        cooldown: Optional[Union[float, int]] = None,
     ) -> Callable[[Callable], SlashApplicationSubcommand]:
         """Takes the decorated callback and turns it into a :class:`SlashApplicationSubcommand` added as a subcommand.
 
@@ -2837,6 +2842,7 @@ class SlashApplicationSubcommand(SlashCommandMixin, AutocompleteCommandMixin, Ca
                 cmd_type=ApplicationCommandOptionType.sub_command,
                 parent_cog=self.parent_cog,
                 inherit_hooks=inherit_hooks,
+                cooldown=cooldown
             )
             self._children[
                 ret.name
@@ -2882,6 +2888,7 @@ class SlashApplicationCommand(SlashCommandMixin, BaseApplicationCommand, Autocom
         contexts: Optional[Iterable[Union[InteractionContextType, int]]] = None,
         parent_cog: Optional[ClientCog] = None,
         force_global: bool = False,
+        cooldown: Optional[Union[float, int]] = None,
     ) -> None:
         """Represents a Slash Application Command built from the given callback, able to be registered to multiple
         guilds or globally.
@@ -2942,6 +2949,7 @@ class SlashApplicationCommand(SlashCommandMixin, BaseApplicationCommand, Autocom
             contexts=contexts,
             parent_cog=parent_cog,
             force_global=force_global,
+            cooldown=cooldown,
         )
         AutocompleteCommandMixin.__init__(self, parent_cog=parent_cog)
         SlashCommandMixin.__init__(self, callback=callback, parent_cog=parent_cog)
@@ -3005,6 +3013,7 @@ class SlashApplicationCommand(SlashCommandMixin, BaseApplicationCommand, Autocom
         name_localizations: Optional[Dict[Union[Locale, str], str]] = None,
         description_localizations: Optional[Dict[Union[Locale, str], str]] = None,
         inherit_hooks: bool = False,
+        cooldown: Optional[Union[float, int]] = None,
     ) -> Callable[[Callable], SlashApplicationSubcommand]:
         """Takes the decorated callback and turns it into a :class:`SlashApplicationSubcommand` added as a subcommand.
 
@@ -3037,6 +3046,7 @@ class SlashApplicationCommand(SlashCommandMixin, BaseApplicationCommand, Autocom
                 cmd_type=ApplicationCommandOptionType.sub_command,
                 parent_cog=self.parent_cog,
                 inherit_hooks=inherit_hooks,
+                cooldown=cooldown,
             )
             self.children[
                 ret.name
@@ -3237,6 +3247,7 @@ def slash_command(
     integration_types: Optional[Iterable[Union[IntegrationType, int]]] = None,
     contexts: Optional[Iterable[Union[InteractionContextType, int]]] = None,
     force_global: bool = False,
+    cooldown: Optional[Union[float, int]] = None,
 ):
     """Creates a Slash application command from the decorated function.
     Used inside :class:`ClientCog`'s or something that subclasses it.
@@ -3299,6 +3310,7 @@ def slash_command(
             integration_types=integration_types,
             contexts=contexts,
             force_global=force_global,
+            cooldown=cooldown,
         )
 
     return decorator
