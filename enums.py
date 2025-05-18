@@ -2194,6 +2194,7 @@ class ScopeType(StrEnum):
     GUILD = "guild"
     USER = "user"
     GLOBAL = "global"
+    MESSAGE = "message"
 
 
 class LogLevel(str, Enum):

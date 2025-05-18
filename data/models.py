@@ -1116,6 +1116,19 @@ class Feature(Model):
         return feature
 
     @classmethod
+    async def get_message_feature(
+        cls, message_id: int, feature_name: str, default: Any = {}
+    ) -> "Feature":
+        """Get a feature for a specific message."""
+        feature, _ = await cls.get_or_create(
+            name=feature_name,
+            scope_type=ScopeType.MESSAGE,
+            scope_id=message_id,
+            defaults={"settings": {"settings": default}},
+        )
+        return feature
+
+    @classmethod
     async def delete_guild_features(cls, guild_id: int) -> None:
         """Delete all features for a specific guild."""
         await cls.filter(scope_type=ScopeType.GUILD, scope_id=guild_id).delete()
@@ -1584,9 +1597,9 @@ class Logs(Model):
 
         async def log(self, level: LogLevel, message: str, context: Optional[dict] = {}):
             """Create a new log entry."""
-            guild_data = await GuildData.get_or_create_guild(self.guild)
-            user_data = (
-                await UserData.get_or_create_user(self.user) if self.user else None
+            guild_data, _ = await GuildData.get_or_create_guild(self.guild)
+            user_data, _ = (
+                await UserData.get_or_create_user(self.user) if self.user else (None, None)
             )
 
             return await Logs.create(
@@ -1637,7 +1650,7 @@ class Messages(Model):
 
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=100, null=True)
-    message_id = fields.BigIntField(null=True)
+    message_id = fields.BigIntField(null=True, unique=True)
     user_id = fields.BigIntField()
     channel_id = fields.BigIntField()
     guild_id = fields.BigIntField()
@@ -1681,18 +1694,18 @@ class Messages(Model):
             embeds=embeds or [],
         )
         return message
-    def to_dict(self) -> Dict[str, Union[int, str, List[Dict[str, Union[int, str]]]]]:
+    def to_dict(self) -> Dict[str, Union[int, str, None, List[Dict[str, Union[int, str]]]]]:
         """Convert the Messages object into a dictionary."""
         return {
             "name": self.name,
-            "message_id": str(self.message_id),
+            "message_id": str(self.message_id) if self.message_id is not None else None,
             "id": str(self.id),
             "user_id": str(self.user_id),
             "channel_id": str(self.channel_id),
             "guild_id": str(self.guild_id),
             "content": self.content,
-            "timestamp": self.timestamp.isoformat(),  # Convert datetime to string
-            "created_at": self.created_at.isoformat(),  # Convert datetime to string
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
             "embeds": self.embeds,
         }
     
