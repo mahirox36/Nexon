@@ -65,6 +65,7 @@ class Emoji(_EmojiTag, AssetMixin):
         If this emoji is managed by a Twitch integration.
     guild_id: Optional[:class:`int`]
         The guild ID the emoji belongs to, if applicable. This is ```None`` for application emojis.
+        
         .. versionchanged:: 3.1
             This attribute is now optional to account for application emojis.
     available: :class:`bool`
@@ -74,6 +75,7 @@ class Emoji(_EmojiTag, AssetMixin):
         having the :attr:`~Permissions.manage_emojis` permission.
     application_id: Optional[:class:`int`]
         The ID of the application that this emoji belongs to, if applicable. This is ```None`` for guild emojis.
+        
         .. versionadded:: 3.1
     """
 
@@ -172,7 +174,9 @@ class Emoji(_EmojiTag, AssetMixin):
 
     def is_usable(self) -> bool:
         """:class:`bool`: Whether the bot can use this emoji.
+        
         .. versionadded:: 1.3
+        
         .. versionchanged:: 3.1
             This now accounts for application emojis as well by comparing the application ID.
         """

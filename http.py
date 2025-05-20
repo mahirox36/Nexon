@@ -3152,6 +3152,8 @@ class HTTPClient:
             retry_request=retry_request,
         )
 
+    # Guilds emojis
+    
     def get_all_custom_emojis(
         self,
         guild_id: Snowflake,

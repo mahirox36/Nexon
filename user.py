@@ -485,7 +485,7 @@ class User(BaseUser, abc.Messageable):
             pass
 
     @classmethod
-    def _copy(cls, user: User):
+    def _copy(cls, user: Self) -> Self:
         self = super()._copy(user) # type: ignore
         self._stored = False
         return self

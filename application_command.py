@@ -19,6 +19,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Self,
     Set,
     Tuple,
     Type,
@@ -120,6 +121,7 @@ DEFAULT_SLASH_DESCRIPTION = "No description provided."
 
 T = TypeVar("T")
 FuncT = TypeVar("FuncT", bound=Callable[..., Any])
+CmdT = TypeVar("CmdT", bound="Union[BaseApplicationCommand, SlashApplicationCommand]")
 # As nexon.types exist, we cannot import types
 if TYPE_CHECKING:
     EllipsisType = ellipsis  # noqa: F821
@@ -171,6 +173,14 @@ class CallbackWrapper:
             await interaction.send("The description of this command should be in all uppercase!")
     """
 
+    @overload
+    def __new__(
+        cls, callback: Union[Callable, CallbackWrapper], *args: Any, **kwargs: Any
+    ) -> Self: ...
+
+    @overload
+    def __new__(cls, callback: CmdT, *args: Any, **kwargs: Any) -> CmdT: ...
+    
     def __new__(
         cls,
         callback: Union[

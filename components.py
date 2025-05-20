@@ -170,10 +170,8 @@ class Button(Component):
         self.disabled: bool = data.get("disabled", False)
         self.label: Optional[str] = data.get("label")
         self.emoji: Optional[PartialEmoji]
-        try:
+        if "emoji" in data:
             self.emoji = PartialEmoji.from_dict(data["emoji"])
-        except KeyError:
-            self.emoji = None
 
     def to_dict(self) -> ButtonComponentPayload:
         payload = {
@@ -556,10 +554,7 @@ class SelectOption:
 
     @classmethod
     def from_dict(cls, data: SelectOptionPayload) -> SelectOption:
-        try:
-            emoji = PartialEmoji.from_dict(data["emoji"])
-        except KeyError:
-            emoji = None
+        emoji = PartialEmoji.from_dict(data["emoji"]) if "emoji" in data else None
 
         return cls(
             label=data["label"],
