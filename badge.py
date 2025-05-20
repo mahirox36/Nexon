@@ -339,7 +339,7 @@ class BadgeManager:
         earned_badges = await self.check_for_new_badges(user, context)
         
         for badge in earned_badges:
-            channel = context.channel if context and context.guild and isinstance(context.channel, 'GuildChannel') else None
+            channel = context.channel if context and context.guild and isinstance(context.channel, GuildChannel) else None
             await self.award_badge(user, badge.id, channel)
         
         return earned_badges
