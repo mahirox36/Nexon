@@ -25,11 +25,12 @@ from .data import UserData
 from tortoise.expressions import Q
 from .data.models import MemberData, UserBadge, Badge, BadgeRequirement
 from . import utils
+from .abc import GuildChannel
 
 if TYPE_CHECKING:
     from .user import User
     from .guild import Guild
-    from .abc import GuildChannel
+    
     from .member import Member
 
 
