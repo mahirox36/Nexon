@@ -1722,4 +1722,4 @@ class Messages(Model):
     @property
     def is_sent(self) -> bool:
         """Check if the message has been sent."""
-        return self.message_id is not None
+        return (self.message_id is not None) and (self.message_id != 0)
