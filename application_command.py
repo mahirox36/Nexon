@@ -32,6 +32,7 @@ from typing import (
 import typing_extensions
 from typing_extensions import Annotated
 
+
 from .abc import GuildChannel
 from .channel import (
     CategoryChannel,
@@ -42,6 +43,7 @@ from .channel import (
     TextChannel,
     VoiceChannel,
 )
+from .data.models import Feature
 from .enums import (
     ApplicationCommandOptionType,
     ApplicationCommandType,
@@ -614,6 +616,10 @@ class ClientCog:
         interaction: :class:`.Interaction`
             The invocation interaction.
         """
+    
+    async def is_disabled(self, guild_id: int) -> bool:
+        feature = await Feature.get_guild_feature_or_none(guild_id, self.__class__.__name__)
+        return not feature.enabled if feature else False
 
 
 class MissingApplicationCommandParametersWarning(UserWarning):
