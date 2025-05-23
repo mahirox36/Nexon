@@ -2255,14 +2255,6 @@ class Client:
         return [event for guild in self.guilds for event in guild.scheduled_events]
 
     async def on_interaction(self, interaction: Interaction) -> None:
-        if self._enable_user_data and interaction.user:
-            userData = await interaction.user.get_data()
-            await userData.increment_command_count(interaction)
-            
-            badgeManager, isGuild = BadgeManager.try_get_guild(interaction.guild)
-            await badgeManager.check_and_award_badges(interaction.user, interaction)
-            if isGuild:
-                await BadgeManager().check_and_award_badges(interaction.user, interaction)
         await self.process_application_commands(interaction)
 
     async def process_application_commands(self, interaction: Interaction) -> None:
@@ -3237,6 +3229,17 @@ class Client:
                     await BadgeManager().check_and_award_badges(after.author, after)
             except Exception as e:
                 self.print_error(e)
+        
+        @self.listen()
+        async def on_interaction(interaction: Interaction):
+            if self._enable_user_data and interaction.user:
+                userData = await interaction.user.get_data()
+                await userData.increment_command_count(interaction)
+
+                badgeManager, isGuild = BadgeManager.try_get_guild(interaction.guild)
+                await badgeManager.check_and_award_badges(interaction.user, interaction)
+                if isGuild:
+                    await BadgeManager().check_and_award_badges(interaction.user, interaction)
     async def create_application_emoji(
         self,
         *,

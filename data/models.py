@@ -31,13 +31,17 @@ from ..embeds import Embed
 from ..utils import extract_emojis
 from ..enums import ComparisonType, LogLevel, Rarity, RequirementType, ScopeType
 from .. import utils
+from logging import getLogger
 
 if TYPE_CHECKING:
     from ..interactions import Interaction
     from ..user import User
+    from ..client import Client
     from ..member import Member
     from ..message import Message
     from ..guild import Guild
+
+logger = getLogger(__name__)
 
 __all__ = (
     "SetJSONEncoder",
@@ -210,6 +214,7 @@ class UserData(Model):
     @classmethod
     async def get_or_create_user(cls, user: Union["User", "Member"]):
         """Get the unique user row or create it if not exists."""
+        
         try:
             return await cls.get(id=user.id), False
         except:
@@ -399,9 +404,9 @@ class UserData(Model):
 
     async def increment_command_count(self, interaction: "Interaction") -> None:
         """Increment the command usage count"""
-        if not interaction.data or interaction.data.get("type", 0) != 1:
+        if not interaction.application_command:
             return
-        command_name = interaction.data.get("name", "Unknown")
+        command_name = interaction.application_command.qualified_name
         self.favorites_commands[command_name] = (
             self.favorites_commands.get(command_name, 0) + 1
         )
@@ -629,10 +634,10 @@ class MemberData(Model):
 
     async def increment_command_count(self, interaction: "Interaction") -> None:
         """Increment the command usage count"""
+        if not interaction.application_command:
+            return
         for model in (self, self.user):
-            if not interaction.data or interaction.data.get("type", 0) != 1:
-                continue
-            command_name = interaction.data.get("name", "Unknown")
+            command_name = interaction.application_command.qualified_name
             model.favorites_commands[command_name] = (
                 model.favorites_commands.get(command_name, 0) + 1
             )
@@ -1572,7 +1577,7 @@ class Logs(Model):
     message = fields.TextField()
     context = fields.JSONField(default=dict)
     guild = fields.ForeignKeyField(
-        "models.GuildData", related_name="logs", on_delete=fields.CASCADE
+        "models.GuildData", related_name="logs", on_delete=fields.CASCADE, null=True
     )
     user = fields.ForeignKeyField(
         "models.UserData", related_name="logs", on_delete=fields.CASCADE, null=True
@@ -1584,7 +1589,7 @@ class Logs(Model):
     class Logger:
         def __init__(
             self,
-            guild: "Guild",
+            guild: Optional["Guild"],
             user: Optional[Union["User", "Member"]] = None,
             cog: Optional[Any] = None,
             command: Optional[str] = None,
@@ -1597,7 +1602,10 @@ class Logs(Model):
 
         async def log(self, level: LogLevel, message: str, context: Optional[dict] = {}):
             """Create a new log entry."""
-            guild_data, _ = await GuildData.get_or_create_guild(self.guild)
+            if self.guild:
+                guild_data, _ = await GuildData.get_or_create_guild(self.guild)
+            else:
+                guild_data = None
             user_data, _ = (
                 await UserData.get_or_create_user(self.user) if self.user else (None, None)
             )
