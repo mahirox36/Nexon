@@ -1585,6 +1585,11 @@ class Logs(Model):
 
     class Meta:
         table = "logs"
+    
+    @classmethod
+    async def get_logs_by_guild(cls, guild_id: int) -> Sequence["Logs"]:
+        """Get all logs sent in a specific guild."""
+        return await cls.filter(guild_id=guild_id).all()
 
     class Logger:
         def __init__(
