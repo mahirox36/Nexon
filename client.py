@@ -420,7 +420,7 @@ class Client:
             
             # Console handler with rich colors (all levels)
             rich_handler = RichHandler(
-                level=logging.DEBUG,
+                level=logger_level,
                 console=console,
                 markup=True,
                 rich_tracebacks=True,
