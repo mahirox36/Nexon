@@ -435,7 +435,7 @@ class Client:
                 encoding="utf-8",
                 mode="a"
             )
-            file_handler.setLevel(logging.DEBUG)
+            file_handler.setLevel(logger_level)
             file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
             file_handler.setFormatter(file_formatter)
             
