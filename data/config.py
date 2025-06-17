@@ -12,7 +12,7 @@ TORTOISE_ORM = {
     },
     "apps": {
         "models": {
-            "models": ["nexon.data.models", "aerich.models"],  # Make sure the path is correct here
+            "models": ["nexon.data.models", "aerich.models"],
             "default_connection": "default",
         }
     }

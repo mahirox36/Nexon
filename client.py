@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 import signal
 import sys
@@ -406,38 +407,59 @@ class Client:
         # Setup Logger
         if enable_logger_console:
             custom_theme = Theme({
-            "logging.level.debug": f"{PreColour.debug}",
-            "logging.level.info": f"{PreColour.info}",
-            "logging.level.warning": f"{PreColour.warn}",
-            "logging.level.error": f"{PreColour.error}",
-            "logging.level.critical": f"{PreColour.critical} bold",
+                "logging.level.debug": f"{PreColour.debug}",
+                "logging.level.info": f"{PreColour.info}",
+                "logging.level.warning": f"{PreColour.warn}",
+                "logging.level.error": f"{PreColour.error}",
+                "logging.level.critical": f"{PreColour.critical} bold",
             })
             console = Console(theme=custom_theme, force_terminal=True)
-
+            
+            # Create logs folder if needed
+            os.makedirs("logs", exist_ok=True)
+            
+            # Console handler with rich colors (all levels)
             rich_handler = RichHandler(
-                level=logger_level,
+                level=logging.DEBUG,
                 console=console,
                 markup=True,
                 rich_tracebacks=True,
                 show_time=False,
             )
+            
+            # Rotating file handler for all logs (DEBUG and up)
+            file_handler = RotatingFileHandler(
+                "logs/latest.log",
+                maxBytes=50 * 1024 * 1024,
+                backupCount=5,
+                encoding="utf-8",
+                mode="a"
+            )
+            file_handler.setLevel(logging.DEBUG)
+            file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            file_handler.setFormatter(file_formatter)
+            
+            # Rotating file handler for errors only
+            error_handler = RotatingFileHandler(
+                "logs/errors.log",
+                maxBytes=10 * 1024 * 1024,
+                backupCount=3,
+                encoding="utf-8",
+                mode="a"
+            )
+            error_handler.setLevel(logging.ERROR)
+            error_handler.setFormatter(file_formatter)
+            
+            # Get root logger & clear old handlers
             root_logger = logging.getLogger()
             root_logger.setLevel(logging.DEBUG)
             root_logger.handlers.clear()
-
-            # Add RichHandler for console logging (all levels)
+            
+            # Add handlers to root logger
             root_logger.addHandler(rich_handler)
-
-            # Add advanced file handler for logging to logs/
-            os.makedirs("logs", exist_ok=True)
-            file_handler = logging.FileHandler("logs/latest.log", mode="a", encoding="utf-8")
-            file_handler.setLevel(logging.DEBUG)
-            file_formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            )
-            file_handler.setFormatter(file_formatter)
             root_logger.addHandler(file_handler)
-
+            root_logger.addHandler(error_handler)
+            
             root_logger.propagate = False
             
         if enable_user_data:
