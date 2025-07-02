@@ -294,7 +294,7 @@ class BadgeManager:
                 return str(referenced_msg.author.id) == requirement.value
 
         elif isinstance(context, Interaction) and requirement.type == RequirementType.ALL_COMMANDS:
-            return len(context.client.application_commands) == len(user_data.favorites_commands)
+            return len(context.client.get_application_commands()) == len(user_data.favorites_commands)
 
         return False
 

@@ -20,7 +20,7 @@ from .object import Object
 from .permissions import Permissions
 from .user import BaseUser, User, _UserTag
 from .utils import MISSING
-from .data.models import MemberData
+from .data.models import MemberData, UserData
 
 __all__ = (
     "VoiceState",
@@ -1074,10 +1074,13 @@ class Member(abc.Messageable, _UserTag):
         """
         return self.guild.get_role(role_id) if self._roles.has(role_id) else None
 
-    async def get_data(self) -> 'MemberData':
+    async def get_data(self) -> Union['MemberData', 'UserData']:
         """Returns the user data object associated with this user.
 
         .. versionadded:: Nexon 0.3.0
         """
-        user, _ = await MemberData.get_or_create_user(self)
+        try:
+            user, _ = await MemberData.get_or_create_user(self)
+        except AttributeError:
+            user, _ = await UserData.get_or_create_user(self)
         return user
