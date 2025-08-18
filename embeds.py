@@ -744,7 +744,7 @@ class Embed:
         if footer:
             embed.set_footer(text=footer)
         if author != MISSING:
-            embed.set_author(name=author[0], url=author[1])
+            embed.set_author(name=author[0], icon_url=author[1])
         return embed
 
     @classmethod
