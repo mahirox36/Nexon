@@ -3211,6 +3211,7 @@ class Client:
                 receiverData =  await reaction.message.author.get_data()
                 data.reactions_given_count += 1
                 receiverData.reactions_given_count += 1
+                await data.add_xp(10, "reaction")
                 await data.save()
                 await receiverData.save()
                 badgeManager, isGuild = BadgeManager.try_get_guild(reaction.message.guild)

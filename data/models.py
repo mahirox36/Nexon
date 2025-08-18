@@ -242,7 +242,7 @@ class UserData(Model):
         """Calculate XP gain based on activity type and various multipliers."""
         base_xp = {
             "message": 5,
-            "voice": 3,
+            "voice": 4,
             "reaction": 1,
             "attachment": 3,
             "command": 2,
@@ -282,7 +282,7 @@ class UserData(Model):
         if not self.last_xp_gain:
             return True
 
-        cooldown = timedelta(seconds=30)  # 30 second cooldown
+        cooldown = timedelta(seconds=60)
         return utils.utcnow() - self.last_xp_gain > cooldown
 
     async def update_streak(self) -> None:
@@ -342,6 +342,9 @@ class UserData(Model):
 
         await self.save()
         return reward
+    
+    def xp_for_level(self, level: int) -> int:
+        return 100 * (level * (level - 1)) // 2
 
     async def add_xp(self, amount: int, activity_type: str = "other") -> Optional[dict]:
         """Enhanced XP addition with various bonuses and checks."""
@@ -396,6 +399,11 @@ class UserData(Model):
         """Get user's rank based on XP."""
         higher_users = await UserData.filter(xp__gt=self.xp).count()
         return higher_users + 1
+    
+    @classmethod
+    async def get_leaderboard(cls, limit: int = 10) -> List['UserData']:
+        """Get the global leveling leaderboard."""
+        return await UserData.all().order_by("-xp").limit(limit)
 
     # Badge related methods
     async def get_badges(self) -> list["Badge"]:
@@ -416,6 +424,7 @@ class UserData(Model):
         self.commands_used_count += 1
         await self.save()
         await BotUser.log_command(command_name)
+        await self.add_xp(5, "command")
 
     async def generalUpdateInfo(self, user: Union["User", "Member"]):
         """Only call this method for UserData instances"""
@@ -438,6 +447,8 @@ class UserData(Model):
         else:
             self.attachment_other_count += 1
         await self.save()
+        
+        await self.add_xp(10, "attachment")
 
     async def add_mentioned_user(self, user_ids: List[int]) -> None:
         """Add mentioned user to both member and user."""
@@ -607,6 +618,9 @@ class MemberData(Model):
     async def set_birthdate(self, birthdate: datetime | str) -> None:
         """Set the user's birthdate"""
         await self.user.set_birthdate(birthdate)
+    
+    async def add_xp(self, amount: int, activity_type: str = "other") -> Optional[dict]:
+        return await self.user.add_xp(amount, activity_type)
 
     # Override increment methods to update both member and user
     async def increment_messages(self, content: str) -> None:
@@ -644,6 +658,7 @@ class MemberData(Model):
             model.commands_used_count += 1
             await model.save()
         await BotUser.log_command(command_name)
+        await self.add_xp(5, "command")
 
     # Methods for updating sets and dictionaries
     async def add_mentioned_user(self, user_ids: List[int]) -> None:
