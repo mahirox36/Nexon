@@ -26,8 +26,6 @@ import re
 from tortoise import fields, Model
 from typing import Any, Dict, List, Set, Union, Optional, TYPE_CHECKING, Sequence
 
-from ..embeds import Embed
-# from ..ext import commands
 from ..utils import extract_emojis
 from ..enums import ComparisonType, LogLevel, Rarity, RequirementType, ScopeType
 from .. import utils
@@ -55,7 +53,7 @@ __all__ = (
     "MemberData",
     "Feature",
     "MetricsCollector",
-    "AIPersonality",
+    "AIConversation",
     "Logs",
 )
 
@@ -140,50 +138,13 @@ class BotUser(Model):
         await bot.save()
 
 
-class UserData(Model):
-    """User activity and statistics tracker.
+class Level(Model):
+    id = fields.BigIntField(pk=True)
+    user: fields.ForeignKeyRelation["UserData"] = fields.ForeignKeyField(
+        "models.UserData", "level"
+    )
+    guild = fields.BigIntField(null=True)
 
-    Stores comprehensive user metrics including message stats,
-    activity patterns, and progression data.
-
-    Attributes:
-        id (int): User's Discord ID
-        name (str): Current display name
-        level (int): User's current level
-        xp (int): Experience points
-
-    .. versionadded:: Nexon 0.3.0
-    """
-
-    # Required fields
-    id = fields.BigIntField(pk=True, unique=True)
-    name = fields.CharField(max_length=32)
-    members = fields.ReverseRelation["MemberData"]
-
-    # Integer fields
-    total_messages = fields.IntField(default=0)
-    character_count = fields.IntField(default=0)
-    word_count = fields.IntField(default=0)
-    attachment_count = fields.IntField(default=0)
-    attachment_image_count = fields.IntField(default=0)
-    attachment_video_count = fields.IntField(default=0)
-    attachment_audio_count = fields.IntField(default=0)
-    attachment_other_count = fields.IntField(default=0)
-    gif_count = fields.IntField(default=0)
-    mention_count = fields.IntField(default=0)
-    emoji_count = fields.IntField(default=0)
-    custom_emoji_count = fields.IntField(default=0)
-    sticker_count = fields.IntField(default=0)
-    replies_count = fields.IntField(default=0)
-    reactions_given_count = fields.IntField(default=0)
-    reactions_received_count = fields.IntField(default=0)
-    commands_used_count = fields.IntField(default=0)
-    links_count = fields.IntField(default=0)
-    edited_messages_count = fields.IntField(default=0)
-    deleted_messages_count = fields.IntField(default=0)
-    longest_message = fields.IntField(default=0)
-
-    # XP-related fields
     level = fields.IntField(default=1)
     xp = fields.IntField(default=0)
     xp_multiplier = fields.FloatField(default=1.0)
@@ -195,46 +156,9 @@ class UserData(Model):
     total_xp_gained = fields.IntField(default=0)
     milestone_rewards = fields.JSONField(default=dict, null=True)  # Dict[str, bool
 
-    # Date/Time fields
-    created_at = fields.DatetimeField(null=True)
-    birthdate = fields.DateField(null=True)
-    updated_at = fields.DatetimeField(auto_now=True)
-    last_message = fields.DatetimeField(null=True)
-
-    # JSON fields with proper encoder/decoder
-    unique_names: Set[str] = fields.JSONField(default=lambda: {"__type__": "set", "items": []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder))  # type: ignore
-    unique_users_mentioned: Set[int] = fields.JSONField(default=lambda: {"__type__": "set", "items": []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder))  # type: ignore
-    unique_emojis_used: Set[str] = fields.JSONField(default=lambda: {"__type__": "set", "items": []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder))  # type: ignore
-    unique_custom_emojis_used: Set[str] = fields.JSONField(default=lambda: {"__type__": "set", "items": []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder))  # type: ignore
-    unique_domains: Set[str] = fields.JSONField(default=lambda: {"__type__": "set", "items": []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder))  # type: ignore
-    favorites_commands: Dict[str, int] = fields.JSONField(default=dict)  # type: ignore
-    preferred_channels: Dict[str, int] = fields.JSONField(default=dict)  # type: ignore
-    last_command_use: Dict[str, float] = fields.JSONField(default=dict, null=True)  # type: ignore
-
     @classmethod
-    async def get_or_create_user(cls, user: Union["User", "Member"]):
-        """Get the unique user row or create it if not exists."""
-        
-        try:
-            return await cls.get(id=user.id), False
-        except:
-            name = user.global_name or user.name
-            return (
-                await cls.create(id=user.id, name=name, created_at=user.created_at),
-                True,
-            )
-
-    async def set_birthdate(self, birthdate: datetime | str) -> None:
-        """Set the user's birthdate"""
-        try:
-            self.birthdate = (
-                datetime.strptime(birthdate, "%Y-%m-%d").date()
-                if isinstance(birthdate, str)
-                else birthdate
-            )
-            await self.save()
-        except ValueError:
-            raise ValueError("Invalid date format. Use YYYY-MM-DD.")
+    async def get_user(cls, user_id: int, guild_id: Optional[int] = None):
+        return await cls.get_or_create(user_id=user_id, guild=guild_id)
 
     async def calculate_xp_gain(
         self, activity_type: str, content_length: int = 0
@@ -315,8 +239,6 @@ class UserData(Model):
             self.daily_xp_gained = 0
             self.daily_xp_reset = now
 
-        await self.save()
-
     async def check_milestone_rewards(self) -> Optional[dict]:
         """Check and award milestone rewards."""
         milestones = {
@@ -337,12 +259,10 @@ class UserData(Model):
                     "bonus_xp": level_req * 100,  # One-time XP bonus
                 }
                 self.xp_multiplier += reward["xp_multiplier"]
-                await self.add_xp(reward["bonus_xp"])
                 break
 
-        await self.save()
         return reward
-    
+
     def xp_for_level(self, level: int) -> int:
         return 100 * (level * (level - 1)) // 2
 
@@ -360,11 +280,13 @@ class UserData(Model):
         self.total_xp_gained += actual_xp
         self.last_xp_gain = utils.utcnow()
 
+        logger.info(actual_xp)
         # Original level up logic
         old_level = self.level
+        logger.info(self.xp)
         self.xp += actual_xp
+        logger.info(self.xp)
         new_level = floor((sqrt(1 + (8 * self.xp / 100)) - 1) / 2) + 1
-
         if new_level > old_level:
             self.level = new_level
             level_up_info = {
@@ -375,17 +297,110 @@ class UserData(Model):
                 "streak_count": self.activity_streak,
                 "daily_total": self.daily_xp_gained,
             }
-
-            # Check for milestone rewards
             milestone_reward = await self.check_milestone_rewards()
             if milestone_reward:
                 level_up_info["milestone"] = milestone_reward
 
-            await self.save()
+            await self.save(force_update=True)
             return level_up_info
 
-        await self.save()
+        await self.save(force_update=True)
         return None
+
+    async def get_rank(self) -> int:
+        """Get user's rank based on XP."""
+        higher_users = await UserData.filter(xp__gt=self.xp).count()
+        return higher_users + 1
+
+    @classmethod
+    async def get_leaderboard(cls, limit: int = 10) -> List["Level"]:
+        """Get the global leveling leaderboard."""
+        return await Level.all().order_by("-xp").limit(limit)
+
+
+class UserData(Model):
+    """User activity and statistics tracker.
+
+    Stores comprehensive user metrics including message stats,
+    activity patterns, and progression data.
+
+    Attributes:
+        id (int): User's Discord ID
+        name (str): Current display name
+        level (int): User's current level
+        xp (int): Experience points
+
+    .. versionadded:: Nexon 0.3.0
+    """
+
+    # Required fields
+    id = fields.BigIntField(pk=True, unique=True)
+    name = fields.CharField(max_length=32)
+    members = fields.ReverseRelation["MemberData"]
+
+    # Integer fields
+    total_messages = fields.IntField(default=0)
+    character_count = fields.IntField(default=0)
+    word_count = fields.IntField(default=0)
+    attachment_count = fields.IntField(default=0)
+    attachment_image_count = fields.IntField(default=0)
+    attachment_video_count = fields.IntField(default=0)
+    attachment_audio_count = fields.IntField(default=0)
+    attachment_other_count = fields.IntField(default=0)
+    gif_count = fields.IntField(default=0)
+    mention_count = fields.IntField(default=0)
+    emoji_count = fields.IntField(default=0)
+    custom_emoji_count = fields.IntField(default=0)
+    sticker_count = fields.IntField(default=0)
+    replies_count = fields.IntField(default=0)
+    reactions_given_count = fields.IntField(default=0)
+    reactions_received_count = fields.IntField(default=0)
+    commands_used_count = fields.IntField(default=0)
+    links_count = fields.IntField(default=0)
+    edited_messages_count = fields.IntField(default=0)
+    deleted_messages_count = fields.IntField(default=0)
+    longest_message = fields.IntField(default=0)
+
+    # Date/Time fields
+    created_at = fields.DatetimeField(null=True)
+    birthdate = fields.DateField(null=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+    last_message = fields.DatetimeField(null=True)
+
+    # JSON fields with proper encoder/decoder
+    unique_names: Set[str] = fields.JSONField(default=lambda: {"__type__": "set", "items": []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder))  # type: ignore
+    unique_users_mentioned: Set[int] = fields.JSONField(default=lambda: {"__type__": "set", "items": []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder))  # type: ignore
+    unique_emojis_used: Set[str] = fields.JSONField(default=lambda: {"__type__": "set", "items": []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder))  # type: ignore
+    unique_custom_emojis_used: Set[str] = fields.JSONField(default=lambda: {"__type__": "set", "items": []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder))  # type: ignore
+    unique_domains: Set[str] = fields.JSONField(default=lambda: {"__type__": "set", "items": []}, encoder=SetJSONEncoder().encode, decoder=lambda s: json.loads(s, object_hook=set_json_decoder))  # type: ignore
+    favorites_commands: Dict[str, int] = fields.JSONField(default=dict)  # type: ignore
+    preferred_channels: Dict[str, int] = fields.JSONField(default=dict)  # type: ignore
+    last_command_use: Dict[str, float] = fields.JSONField(default=dict, null=True)  # type: ignore
+
+    @classmethod
+    async def get_or_create_user(cls, user: Union["User", "Member"]):
+        """Get the unique user row or create it if not exists."""
+
+        try:
+            return await cls.get(id=user.id), False
+        except:
+            name = user.global_name or user.name
+            return (
+                await cls.create(id=user.id, name=name, created_at=user.created_at),
+                True,
+            )
+
+    async def set_birthdate(self, birthdate: datetime | str) -> None:
+        """Set the user's birthdate"""
+        try:
+            self.birthdate = (
+                datetime.strptime(birthdate, "%Y-%m-%d").date()
+                if isinstance(birthdate, str)
+                else birthdate
+            )
+            await self.save()
+        except ValueError:
+            raise ValueError("Invalid date format. Use YYYY-MM-DD.")
 
     # Activity tracking methods
     async def increment_messages(self, content: str) -> None:
@@ -394,16 +409,6 @@ class UserData(Model):
         self.character_count += len(content.replace(" ", ""))
         self.word_count += len(content.split())
         await self.save()
-
-    async def get_rank(self) -> int:
-        """Get user's rank based on XP."""
-        higher_users = await UserData.filter(xp__gt=self.xp).count()
-        return higher_users + 1
-    
-    @classmethod
-    async def get_leaderboard(cls, limit: int = 10) -> List['UserData']:
-        """Get the global leveling leaderboard."""
-        return await UserData.all().order_by("-xp").limit(limit)
 
     # Badge related methods
     async def get_badges(self) -> list["Badge"]:
@@ -424,7 +429,8 @@ class UserData(Model):
         self.commands_used_count += 1
         await self.save()
         await BotUser.log_command(command_name)
-        await self.add_xp(5, "command")
+        level, _ = await Level.get_user(self.id)
+        await level.add_xp(5, "command")
 
     async def generalUpdateInfo(self, user: Union["User", "Member"]):
         """Only call this method for UserData instances"""
@@ -447,8 +453,8 @@ class UserData(Model):
         else:
             self.attachment_other_count += 1
         await self.save()
-        
-        await self.add_xp(10, "attachment")
+        level, _ = await Level.get_user(self.id)
+        await level.add_xp(10, "attachment")
 
     async def add_mentioned_user(self, user_ids: List[int]) -> None:
         """Add mentioned user to both member and user."""
@@ -548,18 +554,6 @@ class MemberData(Model):
     deleted_messages_count = fields.IntField(default=0)
     longest_message = fields.IntField(default=0)
 
-    # XP-related fields
-    level = fields.IntField(default=1)
-    xp = fields.IntField(default=0)
-    xp_multiplier = fields.FloatField(default=1.0)
-    last_xp_gain = fields.DatetimeField(null=True)
-    daily_xp_gained = fields.IntField(default=0)
-    daily_xp_reset = fields.DatetimeField(null=True)
-    activity_streak = fields.IntField(default=0)
-    longest_streak = fields.IntField(default=0)
-    total_xp_gained = fields.IntField(default=0)
-    milestone_rewards = fields.JSONField(default=dict, null=True)  # Dict[str, bool
-
     # Date/Time fields
     created_at = fields.DatetimeField(null=True)
     updated_at = fields.DatetimeField(auto_now=True)
@@ -618,9 +612,11 @@ class MemberData(Model):
     async def set_birthdate(self, birthdate: datetime | str) -> None:
         """Set the user's birthdate"""
         await self.user.set_birthdate(birthdate)
-    
+
     async def add_xp(self, amount: int, activity_type: str = "other") -> Optional[dict]:
-        return await self.user.add_xp(amount, activity_type)
+        user = await self.user
+        level, _ = await Level.get_user(user.id)
+        return await level.add_xp(amount, activity_type)
 
     # Override increment methods to update both member and user
     async def increment_messages(self, content: str) -> None:
@@ -988,7 +984,9 @@ class UserBadge(Model):
         """Get all badges for a specific user."""
         return await cls.filter(user_id=user_id).prefetch_related("badge").all()
 
-    async def to_dict(self) -> Dict[str, Union[int, str, List[Dict[str, Union[int, str]]]]]:
+    async def to_dict(
+        self,
+    ) -> Dict[str, Union[int, str, List[Dict[str, Union[int, str]]]]]:
         """Convert the UserBadge object into a dictionary."""
         badge_dict = await self.badge.to_dict()
         combined_dict = {
@@ -1335,239 +1333,27 @@ class MetricsCollector(Model):
         }
 
 
-class AIPersonality(Model):
-    """Stores AI personality traits and relationship data.
-
-    This model stores the AI's personality state including core traits,
-    learned preferences, relationship dynamics, and emotional memory.
-
-    Attributes:
-        id (int): AI personality entry ID
-        name (str): Name of this personality profile
-        core_traits (dict): Core personality traits (openness, conscientiousness, etc.)
-        learned_preferences (dict): Dictionary of learned user preferences
-        relationship_dynamics (dict): Dictionary of relationship states with users
-        emotional_memory (list): List of significant emotional interactions
-        mood_tracker (dict): Current and recent emotional states
-        creation_date (datetime): When this personality was created
-        last_update (datetime): Last time this personality was updated
-
-    """
-
-    id = fields.IntField(pk=True)
-    name = fields.CharField(max_length=100, default="Default")
-    core_traits = fields.JSONField(
-        default=lambda: {
-            "openness": 0.85,
-            "conscientiousness": 0.9,
-            "extraversion": 0.75,
-            "agreeableness": 0.85,
-            "stability": 0.8,
-            "curiosity": 0.9,
-            "empathy": 0.95,
-            "adaptability": 0.85,
-        }
+class AIConversation(Model):
+    id = fields.BigIntField(pk=True)
+    date = fields.DatetimeField(auto_now_add=True)
+    conversation_id = fields.BigIntField(index=True)
+    message_index = fields.IntField()
+    role = fields.CharField(max_length=10)  # "user" | "assistant" | "system"
+    user: fields.ForeignKeyRelation["UserData"] = fields.ForeignKeyField(
+        "models.UserData", "ai"
     )
-    learned_preferences = fields.JSONField(default=dict)  # User-specific preferences
-    relationship_dynamics = fields.JSONField(default=dict)  # User relationship states
-    emotional_memory = fields.JSONField(default=list)  # Important emotional moments
-    mood_tracker = fields.JSONField(
-        default=lambda: {
-            "current_mood": "relaxed",
-            "mood_since": utils.utcnow().timestamp(),
-            "recent_moods": [],
+    content = fields.TextField()
+    embedding = fields.JSONField()
+
+    async def build(self):
+        user = await self.user
+        return {
+            "role": self.role,
+            "content": f"{f"[User: {user.name}] " if self.role == "user" else ""}{self.content}",
         }
-    )
-    creation_date = fields.DatetimeField(auto_now_add=True)
-    last_update = fields.DatetimeField(auto_now=True)
 
     class Meta:
-        table = "ai_personality"
-
-    @classmethod
-    async def get_default(cls):
-        """Get or create default personality profile."""
-        profile, created = await cls.get_or_create(name="Default")
-        if created:
-            # Initialize with advanced emotional intelligence traits
-            profile.emotional_memory = [
-                {
-                    "type": "initial_creation",
-                    "timestamp": utils.utcnow().timestamp(),
-                    "description": "I was first activated and began learning about the world.",
-                    "mood": "curious",
-                    "intensity": 0.8,
-                }
-            ]
-            await profile.save()
-        return profile
-
-    async def update_mood(
-        self,
-        new_mood: str,
-        intensity: float = 0.5,
-        trigger: str = "general interaction",
-    ):
-        """Update the AI's current mood.
-
-        Args:
-            new_mood (str): The new mood state
-            intensity (float): Intensity of the mood (0.0-1.0)
-            trigger (str): What triggered this mood change
-        """
-        current_time = utils.utcnow().timestamp()
-
-        # Store previous mood in history
-        if self.mood_tracker["current_mood"] != new_mood:
-            previous_mood = {
-                "mood": self.mood_tracker["current_mood"],
-                "started": self.mood_tracker["mood_since"],
-                "ended": current_time,
-                "duration": current_time - self.mood_tracker["mood_since"],
-                "trigger": trigger,
-            }
-
-            # Keep only recent moods (last 10)
-            recent_moods = self.mood_tracker.get("recent_moods", [])
-            recent_moods.append(previous_mood)
-            if len(recent_moods) > 10:
-                recent_moods = recent_moods[-10:]
-
-            # Update mood tracker
-            self.mood_tracker = {
-                "current_mood": new_mood,
-                "mood_since": current_time,
-                "intensity": intensity,
-                "trigger": trigger,
-                "recent_moods": recent_moods,
-            }
-            await self.save()
-
-    async def create_emotional_memory(
-        self,
-        user_id: int,
-        event_type: str,
-        description: str,
-        impact: float,
-        associated_mood: Optional[str] = None,
-    ):
-        """Store a significant emotional memory.
-
-        Args:
-            user_id (int): ID of the user involved
-            event_type (str): Type of emotional event
-            description (str): Description of what happened
-            impact (float): How significant this event is (-1.0 to 1.0)
-            associated_mood (str, optional): Mood associated with this memory
-        """
-        # Create the memory entry
-        memory = {
-            "user_id": user_id,
-            "type": event_type,
-            "timestamp": utils.utcnow().timestamp(),
-            "description": description,
-            "impact": impact,
-            "mood": associated_mood or self.mood_tracker["current_mood"],
-        }
-
-        # Add to emotional memories
-        if not isinstance(self.emotional_memory, list):
-            self.emotional_memory = []
-
-        self.emotional_memory.append(memory)
-
-        # Limit memory size
-        if len(self.emotional_memory) > 100:
-            # Sort by impact and keep most significant
-            self.emotional_memory = sorted(
-                self.emotional_memory, key=lambda x: abs(x["impact"]), reverse=True
-            )[:100]
-
-        await self.save()
-
-    async def update_relationship(
-        self,
-        user_id: int,
-        familiarity_change: float = 0.01,
-        trust_change: float = 0,
-        affinity_change: float = 0,
-    ):
-        """Update relationship dynamics with a user.
-
-        Args:
-            user_id (int): ID of the user
-            familiarity_change (float): Change in familiarity (-1.0 to 1.0)
-            trust_change (float): Change in trust (-1.0 to 1.0)
-            affinity_change (float): Change in affinity/liking (-1.0 to 1.0)
-        """
-        user_id_str = str(user_id)
-
-        # Initialize relationship if it doesn't exist
-        if not self.relationship_dynamics.get(user_id_str):
-            self.relationship_dynamics[user_id_str] = {
-                "familiarity": 0.1,
-                "trust": 0.5,
-                "affinity": 0.5,
-                "first_interaction": utils.utcnow().timestamp(),
-                "last_interaction": utils.utcnow().timestamp(),
-                "interaction_count": 0,
-                "significant_interactions": [],
-            }
-
-        # Update relationship values
-        relationship = self.relationship_dynamics[user_id_str]
-        relationship["familiarity"] = min(
-            1.0, max(0.0, relationship["familiarity"] + familiarity_change)
-        )
-        relationship["trust"] = min(1.0, max(0.0, relationship["trust"] + trust_change))
-        relationship["affinity"] = min(
-            1.0, max(0.0, relationship["affinity"] + affinity_change)
-        )
-        relationship["last_interaction"] = utils.utcnow().timestamp()
-        relationship["interaction_count"] += 1
-
-        await self.save()
-
-    def get_user_relationship(self, user_id: int) -> dict:
-        """Get relationship data for a specific user.
-
-        Args:
-            user_id (int): ID of the user
-
-        Returns:
-            dict: Relationship data or default values if not found
-        """
-        user_id_str = str(user_id)
-        default_relationship = {
-            "familiarity": 0.1,
-            "trust": 0.5,
-            "affinity": 0.5,
-            "first_interaction": utils.utcnow().timestamp(),
-            "last_interaction": utils.utcnow().timestamp(),
-            "interaction_count": 0,
-        }
-
-        return self.relationship_dynamics.get(user_id_str, default_relationship)
-
-    async def learn_preference(
-        self, user_id: int, preference_type: str, preference_value: Any
-    ):
-        """Learn and store a user preference.
-
-        Args:
-            user_id (int): ID of the user
-            preference_type (str): Type of preference (topics, style, etc)
-            preference_value (Any): The preference value to store
-        """
-        user_id_str = str(user_id)
-
-        # Initialize preferences if they don't exist
-        if not self.learned_preferences.get(user_id_str):
-            self.learned_preferences[user_id_str] = {}
-
-        # Store the preference
-        self.learned_preferences[user_id_str][preference_type] = preference_value
-        await self.save()
+        table = "ai_conversation"
 
 
 class Logs(Model):
@@ -1600,7 +1386,7 @@ class Logs(Model):
 
     class Meta:
         table = "logs"
-    
+
     @classmethod
     async def get_logs_by_guild(cls, guild_id: int) -> Sequence["Logs"]:
         """Get all logs sent in a specific guild."""
@@ -1620,14 +1406,18 @@ class Logs(Model):
             self.cog = cog if isinstance(cog, str) else cog.__class__.__name__
             self.command = command
 
-        async def log(self, level: LogLevel, message: str, context: Optional[dict] = {}):
+        async def log(
+            self, level: LogLevel, message: str, context: Optional[dict] = {}
+        ):
             """Create a new log entry."""
             if self.guild:
                 guild_data, _ = await GuildData.get_or_create_guild(self.guild)
             else:
                 guild_data = None
             user_data, _ = (
-                await UserData.get_or_create_user(self.user) if self.user else (None, None)
+                await UserData.get_or_create_user(self.user)
+                if self.user
+                else (None, None)
             )
 
             return await Logs.create(
@@ -1651,13 +1441,15 @@ class Logs(Model):
         async def error(self, message: str, context: Optional[dict] = {}):
             """Log an error message."""
             return await self.log(LogLevel.ERROR, message, context)
-        
+
         async def debug(self, message: str, context: Optional[dict] = {}):
             """Log a debug message."""
             return await self.log(LogLevel.DEBUG, message, context)
+
         async def critical(self, message: str, context: Optional[dict] = {}):
             """Log a critical message."""
             return await self.log(LogLevel.CRITICAL, message, context)
+
         async def exception(self, message: str, context: Optional[dict] = {}):
             """Log an exception message."""
             return await self.log(LogLevel.EXCEPTION, message, context)
@@ -1689,19 +1481,22 @@ class Messages(Model):
 
     class Meta:
         table = "messages"
-    
+
     @classmethod
-    async def get_messages_by_user(cls, user_id: int) -> Sequence['Messages']:
+    async def get_messages_by_user(cls, user_id: int) -> Sequence["Messages"]:
         """Get all messages sent by a specific user."""
         return await cls.filter(user_id=user_id).all()
+
     @classmethod
     async def get_messages_by_guild(cls, guild_id: int) -> Sequence["Messages"]:
         """Get all messages sent in a specific guild."""
         return await cls.filter(guild_id=guild_id).all()
+
     @classmethod
     async def get_messages_by_channel(cls, channel_id: int) -> Sequence["Messages"]:
         """Get all messages sent in a specific channel."""
         return await cls.filter(channel_id=channel_id).all()
+
     @classmethod
     async def create_message(
         cls,
@@ -1722,7 +1517,10 @@ class Messages(Model):
             embeds=embeds or [],
         )
         return message
-    def to_dict(self) -> Dict[str, Union[int, str, None, List[Dict[str, Union[int, str]]]]]:
+
+    def to_dict(
+        self,
+    ) -> Dict[str, Union[int, str, None, List[Dict[str, Union[int, str]]]]]:
         """Convert the Messages object into a dictionary."""
         return {
             "name": self.name,
@@ -1736,17 +1534,17 @@ class Messages(Model):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "embeds": self.embeds,
         }
-    
+
     @property
     def embed_count(self) -> int:
         """Get the number of embeds in this message."""
         return len(self.embeds) if self.embeds else 0
-    
+
     @property
     def is_edited(self) -> bool:
         """Check if the message has been edited."""
         return self.created_at != self.timestamp and self.is_sent
-    
+
     @property
     def is_sent(self) -> bool:
         """Check if the message has been sent."""

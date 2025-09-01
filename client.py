@@ -53,7 +53,7 @@ from .backoff import ExponentialBackoff
 from .badge import BadgeManager
 from .channel import PartialMessageable, _threaded_channel_factory
 from .colour import PreColour
-from .data.models import BotUser
+from .data.models import BotUser, Level
 from .emoji import Emoji
 from .enums import (
     ApplicationCommandType,
@@ -3211,7 +3211,8 @@ class Client:
                 receiverData =  await reaction.message.author.get_data()
                 data.reactions_given_count += 1
                 receiverData.reactions_given_count += 1
-                await data.add_xp(10, "reaction")
+                level, _ = await Level.get_user(user.id)
+                await level.add_xp(10, "reaction")
                 await data.save()
                 await receiverData.save()
                 badgeManager, isGuild = BadgeManager.try_get_guild(reaction.message.guild)
