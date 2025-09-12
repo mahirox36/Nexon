@@ -3211,7 +3211,7 @@ class Client:
                 receiverData =  await reaction.message.author.get_data()
                 data.reactions_given_count += 1
                 receiverData.reactions_given_count += 1
-                level, _ = await Level.get_user(user.id)
+                level, _ = await Level.get_user(user)
                 await level.add_xp(10, "reaction")
                 await data.save()
                 await receiverData.save()
