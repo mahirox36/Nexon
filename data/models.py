@@ -280,12 +280,9 @@ class Level(Model):
         self.total_xp_gained += actual_xp
         self.last_xp_gain = utils.utcnow()
 
-        logger.info(actual_xp)
         # Original level up logic
         old_level = self.level
-        logger.info(self.xp)
         self.xp += actual_xp
-        logger.info(self.xp)
         new_level = floor((sqrt(1 + (8 * self.xp / 100)) - 1) / 2) + 1
         if new_level > old_level:
             self.level = new_level
