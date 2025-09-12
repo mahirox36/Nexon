@@ -157,9 +157,13 @@ class Level(Model):
     milestone_rewards = fields.JSONField(default=dict, null=True)  # Dict[str, bool
 
     @classmethod
-    async def get_user(cls, user: Union['Member', 'User'], guild_id: Optional[int] = None):
-        user_data, _ = await UserData.get_or_create_user(user)
-        return await cls.get_or_create(user_id=user_data.id, guild=guild_id)
+    async def get_user(cls, user: Union['Member', 'User', int], guild_id: Optional[int] = None):
+        if isinstance(user, int):
+            user_id = user
+        else:
+            user_data, _ = await UserData.get_or_create_user(user)
+            user_id = user_data.id
+        return await cls.get_or_create(user_id=user_id, guild=guild_id)
 
     async def calculate_xp_gain(
         self, activity_type: str, content_length: int = 0
