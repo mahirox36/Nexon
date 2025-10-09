@@ -157,7 +157,9 @@ class Level(Model):
     milestone_rewards = fields.JSONField(default=dict, null=True)  # Dict[str, bool
 
     @classmethod
-    async def get_user(cls, user: Union['Member', 'User', int], guild_id: Optional[int] = None):
+    async def get_user(
+        cls, user: Union["Member", "User", int], guild_id: Optional[int] = None
+    ):
         if isinstance(user, int):
             user_id = user
         else:
@@ -339,6 +341,8 @@ class UserData(Model):
     id = fields.BigIntField(pk=True, unique=True)
     name = fields.CharField(max_length=32)
     members = fields.ReverseRelation["MemberData"]
+    avatar = fields.CharField(max_length=512, null=True)
+    banner = fields.CharField(max_length=512, null=True)
 
     # Integer fields
     total_messages = fields.IntField(default=0)
@@ -382,15 +386,23 @@ class UserData(Model):
     @classmethod
     async def get_or_create_user(cls, user: Union["User", "Member"]):
         """Get the unique user row or create it if not exists."""
-
-        try:
-            return await cls.get(id=user.id), False
-        except:
-            name = user.global_name or user.name
-            return (
-                await cls.create(id=user.id, name=name, created_at=user.created_at),
-                True,
-            )
+        return await cls.get_or_create(
+            id=user.id,
+            defaults={
+                "name": user.display_name,
+                "created_at": user.created_at,
+                "avatar": user.display_avatar.url,
+                "banner": user.display_banner,
+            },
+        )
+        
+    async def to_dict(self):
+        return {
+            "id":self.id,
+            "name":self.name,
+            "avatar":self.avatar,
+            "banner":self.banner,
+        }
 
     async def set_birthdate(self, birthdate: datetime | str) -> None:
         """Set the user's birthdate"""
@@ -437,10 +449,11 @@ class UserData(Model):
     async def generalUpdateInfo(self, user: Union["User", "Member"]):
         """Only call this method for UserData instances"""
         displayName = user.global_name or user.name
-        if displayName == self.name:
-            return
-        self.name = displayName
-        self.unique_names.add(displayName)
+        if displayName != self.name:
+            self.name = displayName
+            self.unique_names.add(displayName)
+        self.avatar = user.avatar.url if user.avatar else user.display_avatar
+        self.banner = user.display_banner.url if user.display_banner else None
         await self.save()
 
     async def track_attachment(self, type: str) -> None:
@@ -605,11 +618,12 @@ class MemberData(Model):
 
     async def generalUpdateInfo(self, user: Union["User", "Member"]):
         """Only call this method for UserData instances"""
-        if user.display_name == self.name:
-            return
-        self.name = user.display_name
-        self.unique_names.add(user.display_name)
-        await self.save()
+        if user.display_name != self.name:
+            self.name = user.display_name
+            self.unique_names.add(user.display_name)
+            await self.save()
+        original_user = await self.user
+        await original_user.generalUpdateInfo(user)
 
     async def set_birthdate(self, birthdate: datetime | str) -> None:
         """Set the user's birthdate"""
@@ -1379,15 +1393,30 @@ class Logs(Model):
     command = fields.CharField(max_length=100, null=True)
     message = fields.TextField()
     context = fields.JSONField(default=dict)
-    guild = fields.ForeignKeyField(
+    guild: fields.ForeignKeyNullableRelation["GuildData"] = fields.ForeignKeyField(
         "models.GuildData", related_name="logs", on_delete=fields.CASCADE, null=True
     )
-    user = fields.ForeignKeyField(
+    user:  fields.ForeignKeyNullableRelation["UserData"] = fields.ForeignKeyField(
         "models.UserData", related_name="logs", on_delete=fields.CASCADE, null=True
     )
 
     class Meta:
         table = "logs"
+
+    async def to_dict(self):
+        user_instance = await self.user if self.user else None
+        user = await user_instance.to_dict() if user_instance else None
+        cog = self.cog if self.cog != "NoneType" else None
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat(),
+            "level": self.level.value,
+            "class": cog,
+            "command": self.command,
+            "message": self.message,
+            "context": self.context,
+            "user": user,
+        }
 
     @classmethod
     async def get_logs_by_guild(cls, guild_id: int) -> Sequence["Logs"]:

@@ -534,6 +534,19 @@ class User(BaseUser, abc.Messageable):
         state = self._state
         data: DMChannelPayload = await state.http.start_private_message(self.id)
         return state.add_dm_channel(data)
+    
+    @property
+    def display_banner(self) -> Optional[Asset]:
+        """Optional[:class:`Asset`]: Returns the member's display banner.
+        If unavailable, ``None`` is returned
+
+        For regular members this is just their banner, if any, but
+        if they have a guild specific banner then that
+        is returned instead.
+
+        .. versionadded:: 3.0
+        """
+        return  self.banner
 
     async def get_data(self) -> 'UserData':
         """Returns the user data object associated with this user.
