@@ -993,12 +993,18 @@ class UserBadge(Model):
     class Meta:
         table = "user_badges"
 
-    from typing import Sequence
+    
 
     @classmethod
     async def get_user_badges(cls, user_id: int) -> Sequence["UserBadge"]:
         """Get all badges for a specific user."""
-        return await cls.filter(user_id=user_id).prefetch_related("badge").all()
+        user_badges = await cls.filter(user_id=user_id).prefetch_related("badge").all()
+
+        user_badges.sort(
+            key=lambda ub: getattr(ub.badge.rarity.value, "value", ub.badge.rarity),
+            reverse=True,
+        )
+        return user_badges
 
     async def to_dict(
         self,
@@ -1422,6 +1428,10 @@ class Logs(Model):
     async def get_logs_by_guild(cls, guild_id: int) -> Sequence["Logs"]:
         """Get all logs sent in a specific guild."""
         return await cls.filter(guild_id=guild_id).all()
+    @classmethod
+    async def get_logs_by_none_guild(cls) -> Sequence["Logs"]:
+        """Get all logs sent in a specific guild."""
+        return await cls.filter(guild_id=None).all()
 
     class Logger:
         def __init__(
